@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#0f0e0c"/>
+  <circle cx="256" cy="256" r="200" fill="url(#g)"/>
+  <defs>
+    <linearGradient id="g" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e8c97a"/>
+      <stop offset="1" stop-color="#8b6914"/>
+    </linearGradient>
+  </defs>
+  <path d="M180 300c20-80 60-120 76-128 16 8 56 48 76 128-40 24-112 24-152 0z" fill="#0f0e0c" opacity=".15"/>
+  <ellipse cx="256" cy="268" rx="88" ry="72" fill="#f5f0e6"/>
+  <circle cx="228" cy="248" r="10" fill="#0f0e0c"/>
+  <circle cx="284" cy="248" r="10" fill="#0f0e0c"/>
+  <path d="M248 288c16 12 40 12 56 0" stroke="#0f0e0c" stroke-width="6" stroke-linecap="round"/>
+  <path d="M256 196c-8-28 8-52 32-56 8 20 0 44-20 56" fill="#d4af5f"/>
+  <path d="M320 220c28 8 48 32 52 60-20-4-40-16-52-36" fill="#d4af5f"/>
+  <path d="M192 220c-28 8-48 32-52 60 20-4 40-16 52-36" fill="#d4af5f"/>
+  <text x="256" y="420" text-anchor="middle" font-family="Georgia, serif" font-size="48" font-weight="600" fill="#d4af5f">LP</text>
+</svg>
