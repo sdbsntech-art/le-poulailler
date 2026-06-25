@@ -7,11 +7,20 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'favicon.ico'],
+      includeAssets: [
+        'icon.svg',
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'pwa-192x192.png',
+        'pwa-512x512.png',
+        'pwa-512x512-maskable.png',
+        'Guide-Utilisateur-Le-Poulailler.pdf',
+      ],
       manifest: {
         name: 'Le Poulailler',
         short_name: 'Poulailler',
-        description: 'Gestion d\'élevage avicole — conseils, phases, alimentation et suivi sanitaire.',
+        description:
+          "Gestion d'élevage avicole — conseils, phases, alimentation, rappels et suivi sanitaire. Dakar, Sénégal.",
         theme_color: '#0f0e0c',
         background_color: '#0f0e0c',
         display: 'standalone',
@@ -20,16 +29,32 @@ export default defineConfig({
         start_url: '/',
         lang: 'fr',
         dir: 'ltr',
-        categories: ['business', 'productivity'],
+        categories: ['business', 'productivity', 'food'],
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'pwa-512x512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
+        shortcuts: [
+          {
+            name: 'Alertes & rappels',
+            short_name: 'Alertes',
+            url: '/?tab=alertes',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }],
+          },
+          {
+            name: 'Paramètres horaires',
+            short_name: 'Paramètres',
+            url: '/?tab=parametres',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }],
+          },
+        ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,pdf,webmanifest}'],
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/\.pdf$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

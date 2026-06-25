@@ -27,7 +27,7 @@ export const SECTIONS_CONSEILS = [
           'Surveiller le comportement 2×/jour : poussins groupés = froid ; dispersés, bec ouvert = chaleur excessive.',
           'Éliminer rapidement tout sujet isolé, blessé ou ne mangeant pas (évite la contagion).',
           'Tenir un registre décès quotidien — un pic brutal = problème eau, chauffage ou maladie.',
-          'Respecter strictement le protocole médicaments (coccidiose, vitamines) — voir onglet Médicaments.',
+          'Consulter un vétérinaire pour tout traitement préventif — voir onglet Santé & protection.',
           'Éviter les visites inutiles : chaque stress augmente la mortalité.',
         ],
       },
@@ -44,7 +44,7 @@ export const SECTIONS_CONSEILS = [
         titre: 'Vendre en très bonnes conditions',
         items: [
           'Vendre des sujets uniformes, vivants, sans boiterie ni signe respiratoire.',
-          'Respecter les délais d\'attente médicaments (7 jours minimum avant commercialisation si traitement).',
+          'Respecter les délais d\'attente prescrits par votre vétérinaire avant commercialisation.',
           'Charger tôt le matin, eau jusqu\'au dernier moment, éviter la chaleur dans le camion.',
           'Peser un échantillon pour estimer le poids vif moyen — argument de vente décisif.',
           'Un poulailler propre et bien tenu = confiance de l\'acheteur et meilleur prix.',
@@ -139,7 +139,7 @@ export const SECTIONS_CONSEILS = [
           'Bottes réservées au poulailler, désinfectant au seuil.',
           'Laver les mains avant d\'entrer.',
           'Pas d\'animaux étrangers dans le bâtiment.',
-          'Vacciner / traiter selon protocole — ne jamais mélanger les médicaments au hasard.',
+          'Vacciner / traiter uniquement sur prescription vétérinaire — ne jamais improviser seul.',
           'Entre deux lots : nettoyage, désinfection, séchage — pause vide sanitaire idéale.',
         ],
       },
@@ -163,8 +163,4 @@ export const SECTIONS_CONSEILS = [
   },
 ];
 
-export const AUTEUR = {
-  nom: 'Seydou Bakhayokho',
-  email: 'sdbsntech@gmail.com',
-  message: 'Pour toute information ou suggestion',
-};
+export { AUTEUR } from './footer';

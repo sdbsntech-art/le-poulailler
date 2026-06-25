@@ -1,9 +1,10 @@
 import { getAgeJours, getEffectifLot, getPhaseFromAge } from '../utils/phases';
-import { calculerBesoinsJournaliers, CONTROLES_EAU_PAR_PHASE } from '../data/alimentation';
-import { PHASES } from '../data/medicaments';
+import { calculerBesoinsJournaliers } from '../data/alimentation';
+import { PHASES } from '../data/phases';
 
-export default function AlimentationPanel({ lots, now }) {
+export default function AlimentationPanel({ lots, now, profil }) {
   const actifs = lots.filter((l) => getEffectifLot(l) > 0);
+  const nbEau = profil?.horairesEau?.length || 6;
 
   if (actifs.length === 0) {
     return (
@@ -19,7 +20,8 @@ export default function AlimentationPanel({ lots, now }) {
   return (
     <div className="alim-panel">
       <p className="section-subtitle" style={{ marginTop: 0 }}>
-        Calcul intelligent : 3 repas/jour · eau répartie selon la phase (6× primaire → 3× prêt vente).
+        Calcul intelligent : {profil?.horairesRepas?.length || 3} repas/jour · {nbEau} contrôles eau (horaires dans
+        Paramètres).
       </p>
       <div className="alim-grid">
         {actifs.map((lot) => {
@@ -39,7 +41,7 @@ export default function AlimentationPanel({ lots, now }) {
                 </span>
               </header>
               <p className="alim-card__meta">
-                {effectif} sujets · Jour {age} · {CONTROLES_EAU_PAR_PHASE[phase]} contrôles eau/jour
+                {effectif} sujets · Jour {age} · {nbEau} horaires eau/jour
               </p>
               <div className="alim-card__stats">
                 <div>

@@ -1,6 +1,8 @@
 node_modules
 dist
 dev-dist
+mobile/node_modules
+mobile/.expo
 .DS_Store
 *.log
 .env

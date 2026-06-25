@@ -30,24 +30,25 @@ export function getRatioEau(ageJours) {
   return 1.8;
 }
 
-export function calculerBesoinsJournaliers(effectif, ageJours) {
+export function calculerBesoinsJournaliers(effectif, ageJours, nombreRepas = 3) {
   if (effectif <= 0) {
     return { alimentKg: 0, eauLitres: 0, parRepasKg: 0, parRepasGrammes: 0, litresParControle: 0 };
   }
   const gParPoulet = getGrammesParPouletJour(ageJours);
   const alimentKg = (effectif * gParPoulet) / 1000;
   const eauLitres = alimentKg * getRatioEau(ageJours);
-  const parRepasKg = alimentKg / 3;
+  const repas = Math.max(1, nombreRepas);
+  const parRepasKg = alimentKg / repas;
   const controles = CONTROLES_EAU_PAR_PHASE[getPhaseKey(ageJours)] || 4;
 
   return {
     alimentKg: round2(alimentKg),
     eauLitres: round2(eauLitres),
     parRepasKg: round2(parRepasKg),
-    parRepasGrammes: Math.round((gParPoulet * effectif) / 3),
+    parRepasGrammes: Math.round((gParPoulet * effectif) / repas),
     litresParControle: round2(eauLitres / controles),
     grammesParPoulet: gParPoulet,
-    nombreRepas: 3,
+    nombreRepas: repas,
     nombreControlesEau: controles,
   };
 }

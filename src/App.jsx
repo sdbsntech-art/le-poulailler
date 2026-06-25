@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { usePoulailler } from './hooks/usePoulailler';
 import { useProfil } from './hooks/useProfil';
 import { useAlertes } from './hooks/useAlertes';
 import { useLiveClock } from './hooks/useLiveClock';
-import { useNotificationEngine } from './hooks/useNotificationEngine';
+import { useRappelEngine } from './hooks/useRappelEngine';
 import { computeStatsGlobales, getEffectifLot } from './utils/phases';
 import { buildToutesAlertes, enrichirStatutAlertes, getAlertesUrgentes } from './utils/scheduler';
 import StatsCards from './components/StatsCards';
 import LotForm from './components/LotForm';
 import LotCard from './components/LotCard';
-import MedicamentsView from './components/MedicamentsView';
+import SanteView from './components/SanteView';
 import PwaInstall from './components/PwaInstall';
 import LiveTotals from './components/LiveTotals';
 import QuickRecord from './components/QuickRecord';
@@ -19,6 +19,7 @@ import AlimentationPanel from './components/AlimentationPanel';
 import ConseilsView from './components/ConseilsView';
 import ImportantBanner from './components/ImportantBanner';
 import AppFooter from './components/AppFooter';
+import RappelBanner from './components/RappelBanner';
 import './App.css';
 
 const TABS = [
@@ -26,37 +27,64 @@ const TABS = [
   { id: 'conseils', label: 'Conseils essentiels' },
   { id: 'alertes', label: 'Alertes & suivi' },
   { id: 'alimentation', label: 'Alimentation & eau' },
-  { id: 'medicaments', label: 'Médicaments' },
+  { id: 'sante', label: 'Santé & protection' },
   { id: 'parametres', label: 'Paramètres' },
 ];
 
 export default function App() {
-  const [tab, setTab] = useState('dashboard');
-  const now = useLiveClock(30000);
+  const [tab, setTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return TABS.some((x) => x.id === t) ? t : 'dashboard';
+  });
+  const now = useLiveClock(15000);
   const { lots, ajouterLot, supprimerLot, enregistrerDeces, enregistrerVente } = usePoulailler();
   const { profil, enregistrerProfil } = useProfil();
   const { completedIds, marquerFait, annulerFait, messageLog, ajouterMessageLog } = useAlertes();
 
-  useNotificationEngine(lots, profil, {
+  useRappelEngine(lots, profil, {
     completedIds,
     ajouterMessageLog,
-    enabled: profil.notifyNavigateur,
+    enabled: profil.rappelsConfigures,
   });
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (tab === 'dashboard') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', tab);
+    }
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+  }, [tab]);
+
+  const alertesEnrichies = useMemo(
+    () =>
+      enrichirStatutAlertes(
+        buildToutesAlertes(lots, {
+          horairesRepas: profil.horairesRepas,
+          horairesEau: profil.horairesEau,
+          now,
+        }),
+        completedIds,
+        now,
+        profil
+      ),
+    [lots, profil, completedIds, now]
+  );
+
   const stats = computeStatsGlobales(lots);
-  const nbUrgentes = getAlertesUrgentes(
-    enrichirStatutAlertes(
-      buildToutesAlertes(lots, { horairesRepas: profil.horairesRepas, now }),
-      completedIds,
-      now
-    )
-  ).length;
+  const nbUrgentes = getAlertesUrgentes(alertesEnrichies).length;
 
   const lotsActifs = lots.filter((l) => getEffectifLot(l) > 0);
 
   return (
     <div className="app">
       <PwaInstall />
+      <RappelBanner
+        alertes={alertesEnrichies}
+        onVoirAlertes={() => setTab('alertes')}
+        onFait={marquerFait}
+      />
       <header className="app-header">
         <div className="app-header__brand">
           <div className="app-header__logo" aria-hidden="true">
@@ -160,9 +188,9 @@ export default function App() {
         />
       )}
 
-      {tab === 'alimentation' && <AlimentationPanel lots={lots} now={now} />}
+      {tab === 'alimentation' && <AlimentationPanel lots={lots} now={now} profil={profil} />}
 
-      {tab === 'medicaments' && <MedicamentsView />}
+      {tab === 'sante' && <SanteView />}
 
       {tab === 'parametres' && <ParametresForm profil={profil} onSave={enregistrerProfil} />}
 

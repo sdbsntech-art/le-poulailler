@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PHASES, JALONS, MEDICAMENTS_PAR_PHASE } from '../data/medicaments';
+import { PHASES, JALONS } from '../data/phases';
 import {
   getAgeJours,
   getPhaseInfo,
@@ -144,17 +144,43 @@ export default function LotCard({ lot, onDeces, onVente, onDelete }) {
 
         <div>
           <h4 style={{ fontFamily: 'var(--font-display)', marginBottom: '0.75rem', color: 'var(--gold-light)' }}>
-            Traitements — {phase.label}
+            Protection — {phase.label}
           </h4>
           <ul style={{ fontSize: '0.8rem', color: 'var(--cream-muted)', listStyle: 'none' }}>
-            {(MEDICAMENTS_PAR_PHASE[phase.id] || []).slice(0, 3).map((m, i) => (
-              <li key={i} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
-                <strong style={{ color: 'var(--cream)' }}>{m.nom}</strong> — {m.frequence}
-              </li>
-            ))}
+            {phase.id === 'primaire' && (
+              <>
+                <li style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                  Chauffage stable, litière sèche, eau propre renouvelée souvent.
+                </li>
+                <li style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                  Retirer tout sujet isolé ou malade — consulter un vétérinaire si pic de décès.
+                </li>
+              </>
+            )}
+            {phase.id === 'croissance' && (
+              <>
+                <li style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                  Augmenter l&apos;espace, aérer sans courant d&apos;air sur les sujets.
+                </li>
+                <li style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                  Contrôler toux ou diarrhée — traitement uniquement sur avis vétérinaire.
+                </li>
+              </>
+            )}
+            {(phase.id === 'finition' || phase.id === 'pret') && (
+              <>
+                <li style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                  Litière sèche, ammoniac bas, inspection avant vente.
+                </li>
+                <li style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                  Respecter les délais d&apos;attente indiqués par votre vétérinaire.
+                </li>
+              </>
+            )}
           </ul>
           <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--gold-muted)' }}>
-            Voir l&apos;onglet « Médicaments » pour le protocole complet.
+            Voir l&apos;onglet « Santé & protection » pour les conseils complets et les pharmacies vétérinaires à
+            Dakar.
           </p>
 
           {(lot.deces?.length > 0 || lot.ventes?.length > 0) && (

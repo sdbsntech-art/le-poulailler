@@ -1,17 +1,19 @@
-import { parseISO, format, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PLANNING_TRAITEMENTS } from '../data/planning.js';
+import { calculerBesoinsJournaliers } from '../data/alimentation.js';
+import { getAgeJours, getEffectifLot, getPhaseFromAge } from './phases.js';
 import {
   HORAIRES_REPAS_DEFAUT,
-  CONTROLES_EAU_PAR_PHASE,
-  genererHorairesEau,
-  calculerBesoinsJournaliers,
-} from '../data/alimentation.js';
-import { getAgeJours, getEffectifLot, getPhaseFromAge } from './phases.js';
-import { MEDICAMENTS_PAR_PHASE } from '../data/medicaments.js';
+  HORAIRES_EAU_DEFAUT,
+  REPAS_LABELS,
+  getRappelConfig,
+  getActiveRepeatSlot,
+  isPastLastRepeat,
+  isBeforeFirstRepeat,
+  genererSlotsRappel,
+} from './rappels.js';
 
 const TYPES = {
-  MEDICAMENT: 'medicament',
   ALIMENT: 'aliment',
   EAU: 'eau',
   JALON: 'jalon',
@@ -22,55 +24,10 @@ function parseHour(h) {
   return hh * 60 + (mm || 0);
 }
 
-function isDueNow(heure, now, fenetreMin = 30) {
-  const [h, m] = heure.split(':').map(Number);
-  const target = h * 60 + m;
-  const current = now.getHours() * 60 + now.getMinutes();
-  return current >= target - fenetreMin && current < target + fenetreMin;
-}
-
-function isPastToday(heure, now) {
-  const [h, m] = heure.split(':').map(Number);
-  return now.getHours() * 60 + now.getMinutes() > h * 60 + m + 30;
-}
-
-function medAppliesOnDay(plan, ageJours, dateRef, dateAchat) {
-  if (plan.dayRange) {
-    if (ageJours < plan.dayRange.from || ageJours > plan.dayRange.to) return false;
-  }
-  if (plan.days?.length && plan.days.includes(ageJours)) return true;
-  if (plan.altDays?.includes(ageJours)) return true;
-
-  const achat = parseISO(dateAchat);
-  const weekday = dateRef.getDay();
-
-  if (plan.weekdays?.includes(weekday)) {
-    if (plan.dayRange) {
-      return ageJours >= plan.dayRange.from && ageJours <= plan.dayRange.to;
-    }
-    return true;
-  }
-
-  if (plan.weekdaysAfter && ageJours >= plan.weekdaysAfter.fromDay && ageJours <= plan.weekdaysAfter.toDay) {
-    return plan.weekdaysAfter.weekdays.includes(weekday);
-  }
-
-  if (plan.dayRange && !plan.days?.length && !plan.weekdays) {
-    return ageJours >= plan.dayRange.from && ageJours <= plan.dayRange.to;
-  }
-
-  return false;
-}
-
-function getMedDetails(phase, nom) {
-  const list = MEDICAMENTS_PAR_PHASE[phase] || [];
-  return list.find((m) => m.nom === nom || m.nom.startsWith(nom.split(' ')[0]));
-}
-
 export function buildAlertesPourLot(lot, options = {}) {
-  const now = options.now || new Date();
   const horairesRepas = options.horairesRepas || HORAIRES_REPAS_DEFAUT;
-  const age = getAgeJours(lot.dateAchat, now);
+  const horairesEau = options.horairesEau || HORAIRES_EAU_DEFAUT;
+  const age = getAgeJours(lot.dateAchat, options.now || new Date());
   const effectif = getEffectifLot(lot);
   const phase = getPhaseFromAge(age);
   const libelle = lot.libelle || `Lot J${age}`;
@@ -78,7 +35,7 @@ export function buildAlertesPourLot(lot, options = {}) {
 
   if (effectif <= 0) return alertes;
 
-  const besoins = calculerBesoinsJournaliers(effectif, age);
+  const besoins = calculerBesoinsJournaliers(effectif, age, horairesRepas.length);
 
   horairesRepas.forEach((heure, i) => {
     alertes.push({
@@ -87,8 +44,9 @@ export function buildAlertesPourLot(lot, options = {}) {
       lotLibelle: libelle,
       type: TYPES.ALIMENT,
       heure,
-      titre: `Repas ${i + 1}/3 — ${libelle}`,
-      detail: `${besoins.parRepasKg} kg (~${besoins.parRepasGrammes} g) pour ${effectif} sujets`,
+      repasLabel: REPAS_LABELS[i] || `Repas ${i + 1}`,
+      titre: `${REPAS_LABELS[i] || `Repas ${i + 1}`} — ${libelle}`,
+      detail: `${besoins.parRepasKg} kg (~${besoins.parRepasGrammes} g) · ${effectif} sujets · horaire ${heure}`,
       effectif,
       age,
       phase,
@@ -96,8 +54,6 @@ export function buildAlertesPourLot(lot, options = {}) {
     });
   });
 
-  const nbEau = CONTROLES_EAU_PAR_PHASE[phase];
-  const horairesEau = genererHorairesEau(nbEau);
   horairesEau.forEach((heure, i) => {
     alertes.push({
       id: `${lot.id}-eau-${heure}`,
@@ -105,42 +61,14 @@ export function buildAlertesPourLot(lot, options = {}) {
       lotLibelle: libelle,
       type: TYPES.EAU,
       heure,
-      titre: `Eau ${i + 1}/${nbEau} — ${libelle}`,
-      detail: `Vérifier abreuvoirs · ~${besoins.litresParControle} L · Total jour: ${besoins.eauLitres} L`,
+      titre: `Eau ${i + 1}/${horairesEau.length} — ${libelle}`,
+      detail: `Vérifier abreuvoirs · ~${besoins.litresParControle} L · Total jour: ${besoins.eauLitres} L · horaire ${heure}`,
       effectif,
       age,
       phase,
       priorite: 1,
     });
   });
-
-  for (const plan of PLANNING_TRAITEMENTS) {
-    if (plan.phase !== phase) continue;
-    if (plan.optional) continue;
-
-    if (!medAppliesOnDay(plan, age, now, lot.dateAchat)) continue;
-
-    const med = getMedDetails(plan.phase, plan.nom);
-    const hours = plan.hours || ['08:00'];
-
-    for (const heure of hours) {
-      alertes.push({
-        id: `${lot.id}-med-${plan.id}-${heure}`,
-        lotId: lot.id,
-        lotLibelle: libelle,
-        type: TYPES.MEDICAMENT,
-        heure,
-        titre: `💊 ${plan.nom}`,
-        detail: med
-          ? `${med.dosage} — ${med.frequence}${plan.note ? ` (${plan.note})` : ''}`
-          : plan.note || 'Voir protocole',
-        effectif,
-        age,
-        phase,
-        priorite: 3,
-      });
-    }
-  }
 
   [15, 30, 45].forEach((jalon) => {
     if (age === jalon) {
@@ -169,25 +97,55 @@ export function buildAlertesPourLot(lot, options = {}) {
 }
 
 export function buildToutesAlertes(lots, options = {}) {
-  const now = options.now || new Date();
   const actifs = lots.filter((l) => getEffectifLot(l) > 0);
   return actifs
     .flatMap((lot) => buildAlertesPourLot(lot, options))
     .sort((a, b) => parseHour(a.heure) - parseHour(b.heure));
 }
 
-export function enrichirStatutAlertes(alertes, completedIds, now = new Date()) {
+export function enrichirStatutAlertes(alertes, completedIds, now = new Date(), profil = {}) {
+  const { intervalMinutes, repetitions } = getRappelConfig(profil);
+
   return alertes.map((a) => {
     const done = completedIds.includes(a.id);
-    const due = isDueNow(a.heure, now);
-    const missed = !done && isPastToday(a.heure, now);
-    const upcoming = !done && !missed && !due;
+
+    if (a.type === TYPES.JALON) {
+      const due = now.getHours() >= 7 && now.getHours() < 10;
+      const missed = !done && now.getHours() >= 10;
+      let statut = 'a-venir';
+      if (done) statut = 'fait';
+      else if (due) statut = 'maintenant';
+      else if (missed) statut = 'en-retard';
+      return { ...a, statut, done, intervalMinutes, repetitions };
+    }
+
+    const slot = getActiveRepeatSlot(a.heure, now, intervalMinutes, repetitions);
+    const missed = !done && isPastLastRepeat(a.heure, now, intervalMinutes, repetitions);
+    const upcoming = !done && !slot && !missed && isBeforeFirstRepeat(a.heure, now);
+
     let statut = 'a-venir';
     if (done) statut = 'fait';
-    else if (due) statut = 'maintenant';
+    else if (slot) statut = 'maintenant';
     else if (missed) statut = 'en-retard';
 
-    return { ...a, statut, done, due, missed, upcoming };
+    const slots = genererSlotsRappel(a.heure, intervalMinutes, repetitions);
+
+    return {
+      ...a,
+      statut,
+      done,
+      upcoming,
+      missed,
+      due: !!slot,
+      intervalMinutes,
+      repetitions,
+      repeatIndex: slot?.index ?? null,
+      repeatTotal: repetitions,
+      slotHeure: slot?.heure ?? null,
+      plageRappel: slots.length
+        ? `${slots[0].heure}–${slots[slots.length - 1].heure}`
+        : a.heure,
+    };
   });
 }
 
@@ -195,8 +153,12 @@ export function getAlertesUrgentes(alertes) {
   return alertes.filter((a) => a.statut === 'maintenant' || a.statut === 'en-retard');
 }
 
+export function getAlertesActivesMaintenant(alertes) {
+  return alertes.filter((a) => a.statut === 'maintenant');
+}
+
 export function formatDateLong(date) {
   return format(date, "EEEE d MMMM yyyy — HH:mm", { locale: fr });
 }
 
-export { TYPES, isDueNow };
+export { TYPES };

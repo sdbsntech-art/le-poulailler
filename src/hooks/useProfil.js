@@ -1,10 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
+import {
+  HORAIRES_REPAS_DEFAUT,
+  HORAIRES_EAU_DEFAUT,
+  RAPPEL_DEFAUT,
+} from '../utils/rappels.js';
 
 const STORAGE_KEY = 'le-poulailler-profil';
 
 const DEFAULT = {
-  horairesRepas: ['07:00', '12:00', '17:00'],
-  notifyNavigateur: true,
+  horairesRepas: [...HORAIRES_REPAS_DEFAUT],
+  horairesEau: [...HORAIRES_EAU_DEFAUT],
+  rappelIntervalMinutes: RAPPEL_DEFAUT.intervalMinutes,
+  rappelRepetitions: RAPPEL_DEFAUT.repetitions,
+  sonRappel: true,
+  notifyNavigateur: false,
+  rappelsConfigures: false,
 };
 
 function load() {
@@ -13,8 +23,16 @@ function load() {
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
-        horairesRepas: parsed.horairesRepas || DEFAULT.horairesRepas,
-        notifyNavigateur: parsed.notifyNavigateur !== false,
+        horairesRepas: parsed.horairesRepas?.length === 3 ? parsed.horairesRepas : DEFAULT.horairesRepas,
+        horairesEau:
+          Array.isArray(parsed.horairesEau) && parsed.horairesEau.length > 0
+            ? parsed.horairesEau
+            : DEFAULT.horairesEau,
+        rappelIntervalMinutes: parsed.rappelIntervalMinutes ?? DEFAULT.rappelIntervalMinutes,
+        rappelRepetitions: parsed.rappelRepetitions ?? DEFAULT.rappelRepetitions,
+        sonRappel: parsed.sonRappel !== false,
+        notifyNavigateur: false,
+        rappelsConfigures: parsed.rappelsConfigures === true || !!parsed.horairesRepas,
       };
     }
   } catch {
@@ -35,7 +53,7 @@ export function useProfil() {
   }, [profil]);
 
   const enregistrerProfil = useCallback((data) => {
-    setProfil((prev) => ({ ...prev, ...data }));
+    setProfil((prev) => ({ ...prev, ...data, rappelsConfigures: true }));
   }, []);
 
   return { profil, enregistrerProfil };

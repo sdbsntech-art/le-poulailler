@@ -1,6 +1,6 @@
 import { differenceInDays, parseISO, addDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PHASES } from '../data/medicaments.js';
+import { PHASES } from '../data/phases.js';
 
 export function getAgeJours(dateAchat, referenceDate = new Date()) {
   const achat = typeof dateAchat === 'string' ? parseISO(dateAchat) : dateAchat;
