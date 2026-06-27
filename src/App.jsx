@@ -23,6 +23,9 @@ import ImportantBanner from './components/ImportantBanner';
 import AppFooter from './components/AppFooter';
 import RappelBanner from './components/RappelBanner';
 import TrialBanner from './components/TrialBanner';
+import { apiTrackView, initSecurityListeners } from './utils/security';
+import LockdownView from './components/LockdownView';
+import AdminPanel from './components/AdminPanel';
 import './App.css';
 
 const TABS = [
@@ -39,12 +42,56 @@ export default function App() {
   const { accessGranted, isAuthenticated, notificationPrefs, loading: authLoading } = useAuth();
   const [tab, setTab] = useState(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
+    if (t === 'admin') return 'admin';
     return TABS.some((x) => x.id === t) ? t : 'dashboard';
   });
   const now = useLiveClock(15000);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
+
   const { lots, ajouterLot, supprimerLot, enregistrerDeces, enregistrerVente, hydrated } = usePoulailler();
   const { profil, enregistrerProfil } = useProfil();
   const { completedIds, marquerFait, annulerFait, messageLog, ajouterMessageLog } = useAlertes();
+
+  useEffect(() => {
+    // 1. Track page view and check initial block status
+    apiTrackView()
+      .then((data) => {
+        if (data && data.blocked) {
+          setIsBlocked(true);
+        }
+      })
+      .catch((err) => {
+        if (err.message?.includes('Accès suspendu') || err.status === 403) {
+          setIsBlocked(true);
+        }
+      });
+
+    // 2. Initialize security listeners (F12, Right click, inspect keyboard shortcuts)
+    const cleanupSecurity = initSecurityListeners(
+      () => {
+        setIsBlocked(true);
+      },
+      (attempts) => {
+        setWarningMessage(`Avertissement de sécurité : Raccourcis ou manipulations interdits. Tentative suspecte ${attempts}/3.`);
+        setTimeout(() => setWarningMessage(''), 5000);
+      }
+    );
+
+    // 3. Secret keyboard shortcut to open Admin Panel (Ctrl + Alt + A)
+    const handleAdminShortcut = (e) => {
+      if (e.ctrlKey && e.altKey && e.key?.toUpperCase() === 'A') {
+        e.preventDefault();
+        setTab('admin');
+      }
+    };
+    window.addEventListener('keydown', handleAdminShortcut);
+
+    return () => {
+      cleanupSecurity();
+      window.removeEventListener('keydown', handleAdminShortcut);
+    };
+  }, []);
 
   useRappelEngine(lots, profil, {
     completedIds,
@@ -79,6 +126,10 @@ export default function App() {
   const nbUrgentes = getAlertesUrgentes(alertesEnrichies).length;
   const lotsActifs = lots.filter((l) => getEffectifLot(l) > 0);
 
+  if (isBlocked) {
+    return <LockdownView />;
+  }
+
   if (authLoading) {
     return (
       <div className="app app--loading">
@@ -109,6 +160,29 @@ export default function App() {
 
   return (
     <div className="app">
+      {warningMessage && (
+        <div
+          className="security-warning-toast"
+          style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 999999,
+            background: 'var(--danger)',
+            color: '#fff',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            boxShadow: '0 4px 15px rgba(196, 92, 92, 0.4)',
+            textAlign: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}
+        >
+          🚨 {warningMessage}
+        </div>
+      )}
       <PwaInstall />
       <TrialBanner onOpenCompte={() => setTab('compte')} />
       <RappelBanner
@@ -228,6 +302,7 @@ export default function App() {
           {tab === 'sante' && <SanteView />}
           {tab === 'parametres' && <ParametresForm profil={profil} onSave={enregistrerProfil} />}
           {tab === 'compte' && <ComptePanel lots={lots} />}
+          {tab === 'admin' && <AdminPanel />}
         </>
       )}
 

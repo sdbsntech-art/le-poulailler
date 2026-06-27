@@ -51,3 +51,32 @@ export function apiSaveNotificationPrefs(token, prefs) {
     body: JSON.stringify(prefs),
   });
 }
+
+export function apiAdminLogin(username, password) {
+  return request('/admin/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function apiGetAdminStats(token) {
+  return request('/admin/stats', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function apiAdminUnblock(token, hashedIp) {
+  return request('/admin/unblock', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ hashedIp }),
+  });
+}
+
+export function apiAdminChangePassword(token, newPassword) {
+  return request('/admin/change-password', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ newPassword }),
+  });
+}
