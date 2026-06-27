@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { buildToutesAlertes, enrichirStatutAlertes, getAlertesActivesMaintenant } from '../utils/scheduler';
 import { jouerSonRappel } from '../utils/alertSound';
+import { dispatcherRappel } from '../utils/notifyDispatch';
 
 const DISPATCHED_KEY = 'le-poulailler-dispatched';
 
@@ -37,9 +38,9 @@ function slotDispatchKey(alerte) {
   return `${alerte.id}-slot-${idx}-${todayKey()}`;
 }
 
-/** Rappels automatiques sur le site : bannière, messages et son. */
+/** Rappels automatiques : site + son (+ navigateur si compte connecté). */
 export function useRappelEngine(lots, profil, options) {
-  const { completedIds, ajouterMessageLog, enabled = true } = options;
+  const { completedIds, ajouterMessageLog, enabled = true, browserAlerts = false } = options;
 
   useEffect(() => {
     if (!enabled || !profil.rappelsConfigures) return;
@@ -70,13 +71,24 @@ export function useRappelEngine(lots, profil, options) {
           sonJoue = true;
         }
 
-        ajouterMessageLog({
-          alerteId: a.id,
-          titre: a.titre,
-          heure: a.slotHeure || a.heure,
-          canaux: profil.sonRappel ? 'site+son' : 'site',
-          repeatLabel: a.repeatIndex != null ? `Rappel ${a.repeatIndex + 1}/${a.repeatTotal}` : null,
-        });
+        if (browserAlerts) {
+          dispatcherRappel(
+            a,
+            { ...profil, notifyNavigateur: true },
+            ajouterMessageLog,
+            {
+              repeatLabel: a.repeatIndex != null ? `Rappel ${a.repeatIndex + 1}/${a.repeatTotal}` : null,
+            }
+          );
+        } else {
+          ajouterMessageLog({
+            alerteId: a.id,
+            titre: a.titre,
+            heure: a.slotHeure || a.heure,
+            canaux: profil.sonRappel ? 'site+son' : 'site',
+            repeatLabel: a.repeatIndex != null ? `Rappel ${a.repeatIndex + 1}/${a.repeatTotal}` : null,
+          });
+        }
 
         markDispatched(key);
       }
@@ -85,5 +97,5 @@ export function useRappelEngine(lots, profil, options) {
     tick();
     const id = setInterval(tick, 15 * 1000);
     return () => clearInterval(id);
-  }, [lots, profil, completedIds, ajouterMessageLog, enabled]);
+  }, [lots, profil, completedIds, ajouterMessageLog, enabled, browserAlerts]);
 }

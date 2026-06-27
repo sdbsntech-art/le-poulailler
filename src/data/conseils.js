@@ -34,7 +34,7 @@ export const SECTIONS_CONSEILS = [
       {
         titre: 'Croissance et finition (J15 à J45)',
         items: [
-          'Augmenter progressivement l\'espace au m² (densité excessive = pic de mortalité et qualité médiocre).',
+          'Augmenter progressivement l\'espace disponible (surpeuplement = mortalité et qualité médiocre).',
           'Maintenir une ventilation croissante sans courants d\'air sur les poussins.',
           '3 repas réguliers + eau disponible en permanence — ne jamais laisser les abreuvoirs vides en chaleur.',
           'Préparer la vente dès J40 : contacts acheteurs, transport, jeûne léger si exigé par l\'abattoir.',
@@ -88,42 +88,48 @@ export const SECTIONS_CONSEILS = [
   },
   {
     id: 'construction',
-    titre: 'Construire un poulailler solide',
+    titre: 'Construire et entretenir son poulailler',
     icone: '🏗️',
     important: true,
     points: [
       {
-        titre: 'Dimensions recommandées',
+        titre: 'Choisir le bon emplacement avant de construire',
         items: [
-          'Phase primaire : 25–30 poussins/m² maximum (les 2 premières semaines).',
-          'Croissance : 15–20 /m².',
-          'Finition : 10–12 /m² pour une bonne homogénéité de poids.',
-          'Hauteur sous plafond : 2,2 à 2,5 m pour une bonne circulation d\'air.',
+          'Priorité au sol sec et bien drainé — jamais en zone basse ou inondable.',
+          'Protéger le bâtiment du vent dominant (harmattan, alizés) avec haie ou mur amont.',
+          'Éviter le plein soleil sur toiture en tôle sans isolation — surchauffe mortelle.',
+          'Prévoir un accès pratique pour livraison d\'aliment et chargement des poulets à la vente.',
+          'S\'éloigner de la basse-cour domestique pour limiter les maladies croisées.',
         ],
       },
       {
-        titre: 'Structure',
+        titre: 'Entretien quotidien',
         items: [
-          'Fondations légères mais stables ; sol béton ou latérite compactée + litière.',
-          'Murs : briques, parpaings ou bois traité — étanchéité contre la pluie.',
-          'Toit en tôle avec sous-toiture (panneaux, paille sous tôle) pour réduire la chaleur.',
-          'Portes verrouillables contre vol et prédateurs (chats, chiens, mangoustes, rats).',
+          'Nettoyer et remplir abreuvoirs et mangeoires chaque jour — eau toujours propre.',
+          'Retirer immédiatement litière humide, cadavres et sujets isolés.',
+          'Surveiller odeur d\'ammoniac : signe de litière sale ou mauvaise ventilation.',
+          'Contrôler portes, grillages et clôtures contre prédateurs (rats, mangoustes, chiens).',
+          'Tenir un registre simple : décès, anomalies, travaux effectués.',
         ],
       },
       {
-        titre: 'Ventilation & chauffage',
+        titre: 'Entretien entre deux lots',
         items: [
-          'Bandes ou fenêtres hautes + bas pour renouveler l\'air sans courant au niveau des poussins.',
-          'Chauffage : ampoules infrarouge, poêle sécurisé ou gaz — toujours hors de portée des poussins.',
-          'Thermomètre à hauteur des poussins, pas à hauteur d\'homme.',
+          'Vider complètement la litière après chaque cycle.',
+          'Laver parois, sol et matériel, puis désinfecter.',
+          'Laisser sécher et aérer — idéalement 10 à 14 jours de vide sanitaire.',
+          'Vérifier toiture, gouttières et évacuation d\'eau avant l\'arrivée du lot suivant.',
+          'Un poulailler propre entre deux cycles réduit fortement les maladies.',
         ],
       },
       {
-        titre: 'Équipements',
+        titre: 'Qualité de construction (conseils généraux)',
         items: [
-          'Abreuvoirs et mangeoires suffisants (allonger le nombre en croissance).',
-          'Éclairage 16–18 h/jour les 2 premières semaines si souhaité, puis réduire.',
-          'Zone de stockage aliment sec, à l\'abri des rongeurs.',
+          'Structure stable, étanche à la pluie, avec ventilation haute et basse sans courant sur les poussins.',
+          'Toit isolé (sous-toiture) pour limiter la chaleur en saison sèche.',
+          'Portes verrouillables, sol adapté + litière sèche — jamais béton nu sans litière.',
+          'Abreuvoirs et mangeoires en nombre suffisant, zone de stockage aliment à l\'abri des rongeurs.',
+          'Pour un guide visuel détaillé, voir la vidéo de la chaîne Malick87 ci-dessous.',
         ],
       },
     ],
@@ -162,5 +168,17 @@ export const SECTIONS_CONSEILS = [
     ],
   },
 ];
+
+export const VIDEO_CONSTRUCTION = {
+  titre: 'Guide vidéo — construction de poulailler',
+  description:
+    'Vidéo explicative pour bien comprendre l\'emplacement, la construction et l\'entretien d\'un poulailler.',
+  chaineNom: 'Malick87',
+  chaineUrl: 'https://www.youtube.com/@Malick87',
+  videoId: 'X-vVdTOEwqs',
+  embedUrl: 'https://www.youtube.com/embed/X-vVdTOEwqs',
+  watchUrl: 'https://www.youtube.com/watch?v=X-vVdTOEwqs',
+  thumbnail: 'https://img.youtube.com/vi/X-vVdTOEwqs/hqdefault.jpg',
+};
 
 export { AUTEUR } from './footer';

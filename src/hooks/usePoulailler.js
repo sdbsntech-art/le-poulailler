@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const STORAGE_KEY = 'le-poulailler-data';
 
@@ -21,68 +22,138 @@ function generateId() {
 }
 
 export function usePoulailler() {
-  const [lots, setLots] = useState(loadLots);
+  const { accessGranted, isAuthenticated, fetchCloudData, syncToCloud } = useAuth();
+  const [lots, setLots] = useState([]);
+  const [hydrated, setHydrated] = useState(false);
+  const skipSave = useRef(false);
 
   useEffect(() => {
+    if (!accessGranted) {
+      setLots([]);
+      setHydrated(true);
+      return;
+    }
+
+    async function hydrate() {
+      skipSave.current = true;
+      if (isAuthenticated) {
+        try {
+          const remote = await fetchCloudData();
+          if (remote?.lots?.length) {
+            setLots(remote.lots);
+          } else {
+            setLots(loadLots());
+          }
+        } catch {
+          setLots(loadLots());
+        }
+      } else {
+        setLots(loadLots());
+      }
+      setHydrated(true);
+      setTimeout(() => {
+        skipSave.current = false;
+      }, 100);
+    }
+    hydrate();
+  }, [accessGranted, isAuthenticated, fetchCloudData]);
+
+  useEffect(() => {
+    if (!hydrated || !accessGranted || skipSave.current) return;
     saveLots(lots);
-  }, [lots]);
+    if (isAuthenticated) {
+      syncToCloud(lots, undefined).catch(() => {});
+    }
+  }, [lots, hydrated, accessGranted, isAuthenticated, syncToCloud]);
 
-  const ajouterLot = useCallback(({ dateAchat, quantiteInitiale, libelle = '' }) => {
-    const lot = {
-      id: generateId(),
-      dateAchat,
-      quantiteInitiale: Number(quantiteInitiale),
-      libelle: libelle.trim(),
-      deces: [],
-      ventes: [],
-      createdAt: new Date().toISOString(),
-    };
-    setLots((prev) => [lot, ...prev]);
-    return lot;
-  }, []);
+  const guard = useCallback(
+    (fn) =>
+      (...args) => {
+        if (!accessGranted) return null;
+        return fn(...args);
+      },
+    [accessGranted]
+  );
 
-  const supprimerLot = useCallback((id) => {
-    setLots((prev) => prev.filter((l) => l.id !== id));
-  }, []);
+  const ajouterLot = useCallback(
+    guard(({ dateAchat, quantiteInitiale, libelle = '' }) => {
+      const lot = {
+        id: generateId(),
+        dateAchat,
+        quantiteInitiale: Number(quantiteInitiale),
+        libelle: libelle.trim(),
+        deces: [],
+        ventes: [],
+        createdAt: new Date().toISOString(),
+      };
+      setLots((prev) => [lot, ...prev]);
+      return lot;
+    }),
+    [guard]
+  );
 
-  const enregistrerDeces = useCallback((lotId, { date, quantite, note = '' }) => {
-    setLots((prev) =>
-      prev.map((l) =>
-        l.id === lotId
-          ? {
-              ...l,
-              deces: [...(l.deces || []), { id: generateId(), date, quantite: Number(quantite), note }],
-            }
-          : l
-      )
-    );
-  }, []);
+  const supprimerLot = useCallback(
+    guard((id) => {
+      setLots((prev) => prev.filter((l) => l.id !== id));
+    }),
+    [guard]
+  );
 
-  const enregistrerVente = useCallback((lotId, { date, quantite, note = '' }) => {
-    setLots((prev) =>
-      prev.map((l) =>
-        l.id === lotId
-          ? {
-              ...l,
-              ventes: [...(l.ventes || []), { id: generateId(), date, quantite: Number(quantite), note }],
-            }
-          : l
-      )
-    );
-  }, []);
+  const enregistrerDeces = useCallback(
+    guard((lotId, { date, quantite, note = '' }) => {
+      setLots((prev) =>
+        prev.map((l) =>
+          l.id === lotId
+            ? {
+                ...l,
+                deces: [...(l.deces || []), { id: generateId(), date, quantite: Number(quantite), note }],
+              }
+            : l
+        )
+      );
+    }),
+    [guard]
+  );
 
-  const modifierLot = useCallback((id, updates) => {
-    setLots((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, ...updates } : l))
-    );
-  }, []);
+  const enregistrerVente = useCallback(
+    guard((lotId, { date, quantite, note = '' }) => {
+      setLots((prev) =>
+        prev.map((l) =>
+          l.id === lotId
+            ? {
+                ...l,
+                ventes: [...(l.ventes || []), { id: generateId(), date, quantite: Number(quantite), note }],
+              }
+            : l
+        )
+      );
+    }),
+    [guard]
+  );
+
+  const modifierLot = useCallback(
+    guard((id, updates) => {
+      setLots((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+    }),
+    [guard]
+  );
+
+  const replaceLots = useCallback(
+    (next) => {
+      if (!accessGranted) return;
+      setLots(next);
+    },
+    [accessGranted]
+  );
 
   return {
     lots,
+    hydrated,
     ajouterLot,
     supprimerLot,
     enregistrerDeces,
     enregistrerVente,
     modifierLot,
+    replaceLots,
   };
 }

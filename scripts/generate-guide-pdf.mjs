@@ -226,7 +226,7 @@ subheading(doc, 'Choisir l\'emplacement du poulailler');
 paragraph(doc, 'Protection vent (harmattan, alizés), orientation soleil (Est-Ouest), sol drainé, accès camion, éloignement basse-cour, eau et électricité.');
 
 subheading(doc, 'Construire un poulailler solide');
-paragraph(doc, 'Densités : 25–30/m² (primaire), 15–20/m² (croissance), 10–12/m² (finition). Structure étanche, ventilation haute/basse, chauffage sécurisé, équipements adaptés.');
+paragraph(doc, 'Construire et entretenir : emplacement sec et protégé, entretien quotidien (eau, litière, cadavres), vide sanitaire entre lots. Guide vidéo : chaîne YouTube Malick87 (youtube.com/@Malick87).');
 
 subheading(doc, 'Hygiène & biosécurité');
 paragraph(doc, 'Bottes dédiées, lavage des mains, pas d\'animaux étrangers, protocole vétérinaire, vide sanitaire entre lots.');

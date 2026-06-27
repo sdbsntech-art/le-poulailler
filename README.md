@@ -1,10 +1,35 @@
 # Le Poulailler
 
-Application de gestion d'élevage avicole — **PWA web** + **application mobile React Native (Expo)**.
+Application SaaS de gestion d'élevage avicole (React + API + PWA).
 
 **Créateur :** ZAYEL — [sdbsntech@gmail.com](mailto:sdbsntech@gmail.com)
 
-Étudiant en informatique · développement web & apps mobiles · data engineer · pentester junior.
+## Mode SaaS
+
+- **Essai gratuit 7 jours** sans compte (données locales sur l'appareil)
+- **Alerte** 2 jours avant la fin de l'essai
+- **Sans compte après 7 jours** : accès bloqué, données effacées
+- **Avec compte** : sauvegarde cloud, rapports mensuels/annuels, notifications navigateur (+ e-mail bientôt)
+
+### Lancer (web + API)
+
+```bash
+# Terminal 1 — API
+npm run server:install
+npm run server
+
+# Terminal 2 — site
+npm install
+npm run dev
+```
+
+### Liste des utilisateurs (admin)
+
+```bash
+curl -H "X-Admin-Key: VOTRE_ADMIN_KEY" http://localhost:3001/api/admin/users
+```
+
+Configurez `JWT_SECRET` et `ADMIN_KEY` dans le fichier `.env` à la racine (voir `.env.example`).
 
 ## Fonctionnalités
 

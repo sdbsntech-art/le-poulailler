@@ -12,7 +12,10 @@
     "generate-guide-pdf": "node scripts/generate-guide-pdf.mjs",
     "sync-mobile-assets": "node scripts/sync-mobile-assets.mjs",
     "mobile": "npm run sync-mobile-assets && cd mobile && npm start",
-    "mobile:install": "npm run sync-mobile-assets && cd mobile && npm install"
+    "mobile:install": "npm run sync-mobile-assets && cd mobile && npm install",
+    "server:install": "cd server && npm install",
+    "server": "cd server && npm start",
+    "server:dev": "cd server && npm run dev"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
