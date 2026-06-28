@@ -48,6 +48,18 @@ export default function App() {
   const now = useLiveClock(15000);
   const [isBlocked, setIsBlocked] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.classList.add('menu-open');
+    } else {
+      document.body.classList.remove('menu-open');
+    }
+    return () => {
+      document.body.classList.remove('menu-open');
+    };
+  }, [menuOpen]);
 
   const { lots, ajouterLot, supprimerLot, enregistrerDeces, enregistrerVente, hydrated } = usePoulailler();
   const { profil, enregistrerProfil } = useProfil();
@@ -202,13 +214,18 @@ export default function App() {
             </p>
           </div>
         </div>
+        
+        {/* Navigation Desktop classique */}
         <nav className="nav-tabs" aria-label="Navigation principale">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               className={`nav-tab ${tab === t.id ? 'nav-tab--active' : ''}`}
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                setTab(t.id);
+                setMenuOpen(false);
+              }}
             >
               {t.label}
               {t.id === 'alertes' && nbUrgentes > 0 && (
@@ -220,6 +237,93 @@ export default function App() {
             </button>
           ))}
         </nav>
+
+        {/* Bouton Burger Mobile */}
+        <button
+          className={`burger-btn ${menuOpen ? 'burger-btn--open' : ''}`}
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Menu principal"
+          aria-expanded={menuOpen}
+        >
+          <span className="burger-btn__line"></span>
+          <span className="burger-btn__line"></span>
+          <span className="burger-btn__line"></span>
+        </button>
+
+        {/* Tiroir de Navigation Mobile */}
+        <div className={`mobile-menu ${menuOpen ? 'mobile-menu--open' : ''}`}>
+          <div className="mobile-menu__overlay" onClick={() => setMenuOpen(false)}></div>
+          <div className="mobile-menu__content">
+            <div className="mobile-menu__header">
+              <div className="mobile-menu__brand">
+                <div className="app-header__logo" aria-hidden="true">
+                  🐔
+                </div>
+                <div>
+                  <span className="mobile-menu__title">Le Poulailler</span>
+                  <p className="mobile-menu__subtitle">Gestion d'élevage</p>
+                </div>
+              </div>
+              <button
+                className="mobile-menu__close"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Fermer le menu"
+              >
+                ✕
+              </button>
+            </div>
+            <nav className="mobile-menu__nav">
+              {TABS.map((t) => {
+                let icon = '📊';
+                if (t.id === 'conseils') icon = '💡';
+                else if (t.id === 'alertes') icon = '🔔';
+                else if (t.id === 'alimentation') icon = '🌾';
+                else if (t.id === 'sante') icon = '🏥';
+                else if (t.id === 'parametres') icon = '⚙️';
+                else if (t.id === 'compte') icon = '👤';
+
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`mobile-menu__link ${tab === t.id ? 'mobile-menu__link--active' : ''}`}
+                    onClick={() => {
+                      setTab(t.id);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <span className="mobile-menu__link-icon">{icon}</span>
+                    <span className="mobile-menu__link-label">{t.label}</span>
+                    {t.id === 'alertes' && nbUrgentes > 0 && (
+                      <span className="nav-tab__badge">{nbUrgentes}</span>
+                    )}
+                    {t.id === 'compte' && !isAuthenticated && (
+                      <span className="nav-tab__badge nav-tab__badge--gold">!</span>
+                    )}
+                  </button>
+                );
+              })}
+              
+              {/* Onglet secret admin dans le burger menu s'il est actif */}
+              {tab === 'admin' && (
+                <button
+                  type="button"
+                  className="mobile-menu__link mobile-menu__link--active"
+                  onClick={() => {
+                    setTab('admin');
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span className="mobile-menu__link-icon">🔑</span>
+                  <span className="mobile-menu__link-label">Administration</span>
+                </button>
+              )}
+            </nav>
+            <div className="mobile-menu__footer">
+              <p className="mobile-menu__footer-text">🐔 Élevage Avicole Connecté</p>
+            </div>
+          </div>
+        </div>
       </header>
 
       {!hydrated ? (

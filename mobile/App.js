@@ -1,7 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -16,12 +17,34 @@ export default function App() {
   const webRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
 
   const onReload = useCallback(() => {
     setError(false);
     setLoading(true);
     webRef.current?.reload();
   }, []);
+
+  const onNavigationStateChange = useCallback((navState) => {
+    setCanGoBack(navState.canGoBack);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const onBackPress = () => {
+      if (webRef.current && canGoBack) {
+        webRef.current.goBack();
+        return true;
+      }
+      return false;
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => {
+      BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    };
+  }, [canGoBack]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -53,6 +76,7 @@ export default function App() {
             style={styles.webview}
             onLoadStart={() => setLoading(true)}
             onLoadEnd={() => setLoading(false)}
+            onNavigationStateChange={onNavigationStateChange}
             onError={() => {
               setLoading(false);
               setError(true);
