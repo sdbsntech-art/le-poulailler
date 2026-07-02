@@ -39,7 +39,7 @@ const TABS = [
 ];
 
 export default function App() {
-  const { accessGranted, isAuthenticated, notificationPrefs, loading: authLoading } = useAuth();
+  const { accessGranted, isAuthenticated, notificationPrefs, token, loading: authLoading } = useAuth();
   const [tab, setTab] = useState(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
     if (t === 'admin') return 'admin';
@@ -105,11 +105,38 @@ export default function App() {
     };
   }, []);
 
+  // Écouter les clics sur les notifications transmis par l'application mobile
+  useEffect(() => {
+    const handleWebViewMessage = (event) => {
+      try {
+        let payload = event.data;
+        if (typeof payload === 'string') {
+          payload = JSON.parse(payload);
+        }
+        if (payload && payload.type === 'NOTIFICATION_CLICKED') {
+          console.log('[App.jsx] Notification mobile cliquée, redirection vers les alertes...');
+          setTab('alertes');
+        }
+      } catch (e) {
+        // Ignorer les messages malformés
+      }
+    };
+
+    window.addEventListener('message', handleWebViewMessage);
+    document.addEventListener('message', handleWebViewMessage);
+    return () => {
+      window.removeEventListener('message', handleWebViewMessage);
+      document.removeEventListener('message', handleWebViewMessage);
+    };
+  }, []);
+
   useRappelEngine(lots, profil, {
     completedIds,
     ajouterMessageLog,
     enabled: profil.rappelsConfigures && accessGranted,
     browserAlerts: isAuthenticated && notificationPrefs.browserAlerts,
+    token,
+    notificationPrefs,
   });
 
   useEffect(() => {

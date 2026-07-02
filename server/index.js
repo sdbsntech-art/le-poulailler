@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { getStore, updateStore, nextUserId } from './db.js';
+import { startNotificationScheduler, sendEmail, sendExpoPushNotification, sendFcmToUserTokens } from './services/notificationService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -135,6 +136,9 @@ app.get('/api/data', authMiddleware, (req, res) => {
     notificationPrefs: {
       emailAlerts: !!prefs.email_alerts,
       browserAlerts: prefs.browser_alerts !== false,
+      pushAlerts: !!prefs.push_alerts,
+      expoPushToken: prefs.expo_push_token || null,
+      fcmTokens: prefs.fcm_tokens || [],
     },
   });
 });
@@ -150,17 +154,163 @@ app.put('/api/data', authMiddleware, (req, res) => {
 });
 
 app.put('/api/notifications/prefs', authMiddleware, (req, res) => {
-  const { emailAlerts = false, browserAlerts = true } = req.body;
+  const {
+    emailAlerts = false,
+    browserAlerts = true,
+    pushAlerts = false,
+    expoPushToken = null,
+    fcmToken = null,
+    fcmTokens = null,
+    timezone = 'UTC',
+  } = req.body;
   const now = new Date().toISOString();
   updateStore((s) => {
+    const existing = s.notificationPrefs[req.user.id] || {};
+    let tokens = existing.fcm_tokens || [];
+    if (Array.isArray(fcmTokens)) {
+      tokens = [...new Set(fcmTokens.filter(Boolean))];
+    } else if (fcmToken && !tokens.includes(fcmToken)) {
+      tokens = [...tokens, fcmToken];
+    }
     s.notificationPrefs[req.user.id] = {
       email_alerts: emailAlerts,
       browser_alerts: browserAlerts,
+      push_alerts: pushAlerts,
+      expo_push_token: expoPushToken || existing.expo_push_token || null,
+      fcm_tokens: tokens,
+      timezone: timezone || existing.timezone || 'UTC',
       updated_at: now,
     };
     return s;
   });
-  res.json({ ok: true, emailAlerts, browserAlerts });
+  const saved = getStore().notificationPrefs[req.user.id];
+  res.json({
+    ok: true,
+    emailAlerts,
+    browserAlerts,
+    pushAlerts,
+    expoPushToken: saved.expo_push_token || null,
+    fcmTokens: saved.fcm_tokens || [],
+    timezone,
+  });
+});
+
+app.post('/api/fcm/register', authMiddleware, (req, res) => {
+  const { token, deviceId = null } = req.body;
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ error: 'Token FCM requis.' });
+  }
+
+  const now = new Date().toISOString();
+  updateStore((s) => {
+    const existing = s.notificationPrefs[req.user.id] || {
+      email_alerts: false,
+      browser_alerts: true,
+      push_alerts: false,
+    };
+    const tokens = existing.fcm_tokens || [];
+    if (!tokens.includes(token)) {
+      tokens.push(token);
+    }
+    s.notificationPrefs[req.user.id] = {
+      ...existing,
+      fcm_tokens: tokens,
+      push_alerts: existing.push_alerts !== false ? existing.push_alerts : true,
+      device_id: deviceId || existing.device_id || null,
+      updated_at: now,
+    };
+    return s;
+  });
+
+  res.json({ ok: true, registered: true, fcmTokens: getStore().notificationPrefs[req.user.id].fcm_tokens });
+});
+
+app.post('/api/notifications/trigger', authMiddleware, async (req, res) => {
+  const { alerteId, titre, detail, heure, type } = req.body;
+  const store = getStore();
+  const userId = req.user.id;
+  const prefs = store.notificationPrefs[userId];
+  const user = store.users.find((u) => u.id === userId);
+
+  if (!prefs) {
+    return res.status(404).json({ error: 'Préférences de notification non trouvées.' });
+  }
+
+  const userTimezone = prefs.timezone || 'UTC';
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: userTimezone });
+  const sentKey = `${userId}-${alerteId}-${todayStr}`;
+
+  if (store.sentNotifications?.[sentKey]) {
+    return res.json({ ok: true, message: 'Notification déjà envoyée aujourd\'hui pour cette alerte.' });
+  }
+
+  let emailSent = false;
+  let pushSent = false;
+
+  // Envoi email simulé si activé
+  if (prefs.email_alerts && user?.email) {
+    try {
+      await sendEmail(
+        user.email,
+        `🐔 Le Poulailler : ${titre}`,
+        `Bonjour ${user.nom || ''},\n\nVoici votre rappel :\n- Alerte : ${titre}\n- Détails : ${detail}\n- Heure prévue : ${heure}\n\nBonne journée,\nL'équipe Le Poulailler`,
+        `<div style="font-family: sans-serif; padding: 20px; color: #333;">
+          <h2 style="color: #d4af5f;">🐔 Le Poulailler</h2>
+          <p>Bonjour <strong>${user.nom || ''}</strong>,</p>
+          <p>Voici votre rappel automatique :</p>
+          <div style="background: #fdfaf2; padding: 15px; border-left: 4px solid #d4af5f; margin: 15px 0;">
+            <p style="margin: 0; font-size: 1.1em; font-weight: bold;">${titre}</p>
+            <p style="margin: 5px 0 0 0; color: #666;">${detail}</p>
+            <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #999;">Horaire prévu : ${heure}</p>
+          </div>
+          <p>Bonne journée !</p>
+        </div>`
+      );
+      emailSent = true;
+    } catch (e) {
+      console.error('[Trigger API] Erreur envoi email :', e);
+    }
+  }
+
+  // Envoi push Expo + FCM si activé
+  if (prefs.push_alerts) {
+    if (prefs.expo_push_token) {
+      try {
+        await sendExpoPushNotification(
+          prefs.expo_push_token,
+          `🐔 ${titre}`,
+          `${detail} (${heure})`,
+          { alerteId, type }
+        );
+        pushSent = true;
+      } catch (e) {
+        console.error('[Trigger API] Erreur envoi push Expo :', e);
+      }
+    }
+    const fcmTokens = prefs.fcm_tokens || [];
+    if (fcmTokens.length > 0) {
+      try {
+        await sendFcmToUserTokens(
+          fcmTokens,
+          `🐔 ${titre}`,
+          `${detail} (${heure})`,
+          { alerteId, type, url: '/?tab=alertes' }
+        );
+        pushSent = true;
+      } catch (e) {
+        console.error('[Trigger API] Erreur envoi push FCM :', e);
+      }
+    }
+  }
+
+  // Enregistrer l'envoi
+  updateStore((s) => {
+    if (!s.sentNotifications) s.sentNotifications = {};
+    s.sentNotifications[sentKey] = new Date().toISOString();
+    return s;
+  });
+
+  res.json({ ok: true, emailSent, pushSent });
 });
 
 app.get('/api/admin/users', (req, res) => {
@@ -364,6 +514,7 @@ async function initDbValues() {
 }
 
 await initDbValues();
+startNotificationScheduler();
 
 app.listen(PORT, () => {
   console.log(`API Le Poulailler → http://localhost:${PORT}`);

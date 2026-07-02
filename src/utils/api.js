@@ -80,3 +80,19 @@ export function apiAdminChangePassword(token, newPassword) {
     body: JSON.stringify({ newPassword }),
   });
 }
+
+export function apiTriggerNotification(token, payload) {
+  return request('/notifications/trigger', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function apiRegisterFcmToken(authToken, fcmToken, deviceId) {
+  return request('/fcm/register', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${authToken}` },
+    body: JSON.stringify({ token: fcmToken, deviceId }),
+  });
+}

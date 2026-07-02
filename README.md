@@ -84,6 +84,52 @@ Production : déployez le site web, puis définissez l'URL :
 EXPO_PUBLIC_WEB_URL=https://votre-domaine.com
 ```
 
+## Notifications push (Firebase Cloud Messaging)
+
+Les rappels (repas, eau, jalons) peuvent être envoyés sur **navigateur**, **PWA** et **application mobile Expo**, même lorsque l'app est fermée.
+
+### Configuration Firebase Console
+
+1. Projet Firebase → **Paramètres** → **Cloud Messaging**
+2. **Certificats Web Push** : générez une paire de clés → copiez la clé publique dans `VITE_FIREBASE_VAPID_KEY` (`.env`)
+3. **Compte de service** (envoi serveur) : Paramètres → Comptes de service → Générer une clé JSON
+   - Coller le JSON dans `FIREBASE_SERVICE_ACCOUNT_JSON` (une ligne), ou
+   - Définir `FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json`
+   - Ajouter `FIREBASE_PROJECT_ID=votre-projet-id`
+
+Variables client (`.env`, préfixe `VITE_`) :
+
+```env
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_VAPID_KEY=...
+```
+
+Sans clé VAPID, seules les notifications navigateur locales restent actives (pas de push FCM).
+
+### Activer sur le web
+
+1. Lancer API + site (`npm run server`, `npm run dev`)
+2. Créer un compte → **Mon compte** → **Notifications**
+3. Cliquer **Activer notifications push** et autoriser le navigateur
+4. Cocher **Envoyer les rappels par push (serveur)**
+
+### Application mobile (Expo)
+
+L'app `mobile/` utilise **Expo Push Notifications** (WebView + token Expo). Pour migrer vers FCM natif, remplacer `expo-notifications` par `@react-native-firebase/messaging` et enregistrer le token via `POST /api/fcm/register`.
+
+### Tester
+
+```bash
+# Vérifier l'enregistrement du token (après activation dans l'UI)
+curl -H "Authorization: Bearer VOTRE_JWT" http://localhost:3001/api/data
+
+# Les push partent via le planificateur serveur (toutes les minutes) ou le client (useRappelEngine)
+```
+
 ## Guide PDF
 
 ```bash

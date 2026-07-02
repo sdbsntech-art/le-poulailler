@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getAnneesDisponibles, computeRapportMensuel, computeRapportAnnuel, MOIS_LABELS } from '../utils/reports';
 import { demanderPermissionNotif } from '../utils/notifyDispatch';
+import { isFcmAvailable, getStoredFcmToken } from '../utils/fcmPush';
 
 export default function ComptePanel({ lots }) {
   const {
@@ -13,6 +14,7 @@ export default function ComptePanel({ lots }) {
     logout,
     notificationPrefs,
     updateNotificationPrefs,
+    activateWebPush,
     syncToCloud,
   } = useAuth();
 
@@ -23,6 +25,7 @@ export default function ComptePanel({ lots }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [section, setSection] = useState('compte');
+  const [pushStatus, setPushStatus] = useState('');
 
   const now = new Date();
   const [rapportAnnee, setRapportAnnee] = useState(now.getFullYear());
@@ -69,6 +72,48 @@ export default function ComptePanel({ lots }) {
     if (next) await demanderPermissionNotif();
     await updateNotificationPrefs({ ...notificationPrefs, browserAlerts: next });
   }
+
+  async function togglePushAlerts() {
+    if (!isAuthenticated) return;
+    const next = !notificationPrefs.pushAlerts;
+    const expoPushToken = localStorage.getItem('expo-push-token');
+    const fcmToken = getStoredFcmToken();
+    await updateNotificationPrefs({
+      ...notificationPrefs,
+      pushAlerts: next,
+      expoPushToken: expoPushToken || notificationPrefs.expoPushToken || null,
+      fcmToken: fcmToken || null,
+    });
+  }
+
+  async function handleActivateWebPush() {
+    if (!isAuthenticated) return;
+    setPushStatus('');
+    setBusy(true);
+    try {
+      const result = await activateWebPush();
+      if (result.status === 'granted') {
+        setPushStatus('✓ Notifications push activées sur cet appareil.');
+      } else if (result.status === 'denied') {
+        setPushStatus('Permission refusée. Autorisez les notifications dans les paramètres du navigateur.');
+      } else if (result.status === 'no-vapid') {
+        setPushStatus('Clé VAPID manquante (.env). Les alertes navigateur restent disponibles.');
+      } else if (result.status === 'unsupported') {
+        setPushStatus('Push non supporté sur ce navigateur.');
+      } else {
+        setPushStatus(result.error || 'Impossible d\'activer les notifications push.');
+      }
+    } catch (err) {
+      setPushStatus(err.message || 'Erreur lors de l\'activation.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const hasFcmToken =
+    (notificationPrefs.fcmTokens?.length > 0) || !!getStoredFcmToken();
+  const isMobileApp =
+    navigator.userAgent.includes('LePoulaillerApp') || !!notificationPrefs.expoPushToken;
 
   const tabs = [
     { id: 'compte', label: 'Compte' },
@@ -268,8 +313,58 @@ export default function ComptePanel({ lots }) {
           </label>
           <label className="check-label">
             <input type="checkbox" checked={notificationPrefs.emailAlerts} onChange={toggleEmailAlerts} />
-            Alertes par e-mail (bientôt activé sur le serveur)
+            Alertes par e-mail (Simulées dans la console)
           </label>
+
+          {isFcmAvailable() && (
+            <div className="compte-push-web" style={{ margin: '1rem 0' }}>
+              <p className="compte-hint" style={{ marginBottom: '0.5rem' }}>
+                Recevez les rappels même lorsque l&apos;onglet est fermé (navigateur, tablette, PWA).
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleActivateWebPush}
+                disabled={busy || hasFcmToken}
+              >
+                {hasFcmToken ? 'Push activé sur cet appareil' : 'Activer notifications push'}
+              </button>
+              {pushStatus && (
+                <p className="compte-hint" style={{ marginTop: '0.5rem', fontSize: '0.85em' }}>
+                  {pushStatus}
+                </p>
+              )}
+              <label className="check-label" style={{ marginTop: '0.75rem' }}>
+                <input
+                  type="checkbox"
+                  checked={!!notificationPrefs.pushAlerts}
+                  onChange={togglePushAlerts}
+                  disabled={!hasFcmToken && !isMobileApp}
+                />
+                Envoyer les rappels par push (serveur)
+              </label>
+            </div>
+          )}
+
+          {isMobileApp && (
+            <>
+              <label className="check-label">
+                <input
+                  type="checkbox"
+                  checked={!!notificationPrefs.pushAlerts}
+                  onChange={togglePushAlerts}
+                  disabled={!notificationPrefs.expoPushToken && !localStorage.getItem('expo-push-token')}
+                />
+                Notifications push sur l&apos;application mobile
+              </label>
+              {!notificationPrefs.expoPushToken && !localStorage.getItem('expo-push-token') && (
+                <p className="compte-hint" style={{ color: 'var(--warning)', marginTop: '-0.5rem', marginBottom: '1rem', fontSize: '0.8em' }}>
+                  ⚠️ En attente d&apos;enregistrement du jeton push depuis l&apos;application mobile...
+                </p>
+              )}
+            </>
+          )}
+
           <p className="compte-hint">
             Les rappels sur le site (bannière + son) restent actifs via l&apos;onglet Paramètres.
           </p>

@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { buildToutesAlertes, enrichirStatutAlertes, getAlertesActivesMaintenant } from '../utils/scheduler';
 import { jouerSonRappel } from '../utils/alertSound';
 import { dispatcherRappel } from '../utils/notifyDispatch';
+import { apiTriggerNotification } from '../utils/api';
 
 const DISPATCHED_KEY = 'le-poulailler-dispatched';
 
@@ -90,6 +91,17 @@ export function useRappelEngine(lots, profil, options) {
           });
         }
 
+        // Déclencher les notifications e-mail / push sur le serveur si configuré
+        if (options.token && (options.notificationPrefs?.pushAlerts || options.notificationPrefs?.emailAlerts)) {
+          apiTriggerNotification(options.token, {
+            alerteId: a.id,
+            titre: a.titre,
+            detail: a.detail,
+            heure: a.slotHeure || a.heure,
+            type: a.type
+          }).catch(err => console.error('[useRappelEngine] Erreur déclenchement notif serveur :', err));
+        }
+
         markDispatched(key);
       }
     }
@@ -97,5 +109,5 @@ export function useRappelEngine(lots, profil, options) {
     tick();
     const id = setInterval(tick, 15 * 1000);
     return () => clearInterval(id);
-  }, [lots, profil, completedIds, ajouterMessageLog, enabled, browserAlerts]);
+  }, [lots, profil, completedIds, ajouterMessageLog, enabled, browserAlerts, options.token, options.notificationPrefs]);
 }
