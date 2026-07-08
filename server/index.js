@@ -369,9 +369,9 @@ app.post('/api/security/report-hacking', (req, res) => {
   let attempts = (failedAttempts.get(hashedIp) || 0) + 1;
   failedAttempts.set(hashedIp, attempts);
 
-  console.warn(`[Alerte Sécurité] Tentative suspecte de l'IP ${ip} (${hashedIp}) : ${reason}. Tentative ${attempts}/3`);
+  console.warn(`[Alerte Sécurité] Tentative suspecte de l'IP ${ip} (${hashedIp}) : ${reason}. Tentative ${attempts}/10`);
 
-  if (attempts >= 3) {
+  if (attempts >= 10) {
     updateStore((s) => {
       if (!s.admin) s.admin = {};
       if (!s.admin.blockedIPs) s.admin.blockedIPs = [];
@@ -486,6 +486,18 @@ app.post('/api/admin/change-password', adminAuthMiddleware, async (req, res) => 
   });
 
   res.json({ ok: true });
+});
+
+// Serve static files from the React dist directory
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+
+// Wildcard route to serve index.html for non-API routes (SPA fallback)
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Endpoint API introuvable' });
+  }
+  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 // Initialize settings/admin dynamically on start

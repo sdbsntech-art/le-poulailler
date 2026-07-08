@@ -41,6 +41,7 @@ const TABS = [
 export default function App() {
   const { accessGranted, isAuthenticated, notificationPrefs, token, loading: authLoading } = useAuth();
   const [tab, setTab] = useState(() => {
+    if (window.location.pathname === '/admin') return 'admin';
     const t = new URLSearchParams(window.location.search).get('tab');
     if (t === 'admin') return 'admin';
     return TABS.some((x) => x.id === t) ? t : 'dashboard';
@@ -85,8 +86,10 @@ export default function App() {
         setIsBlocked(true);
       },
       (attempts) => {
-        setWarningMessage(`Avertissement de sécurité : Raccourcis ou manipulations interdits. Tentative suspecte ${attempts}/3.`);
-        setTimeout(() => setWarningMessage(''), 5000);
+        setWarningMessage(
+          `Avertissement de sécurité : Les manipulations non autorisées (outils de développement, clic droit, etc.) sont strictement interdites. En poursuivant, vous risquez un bannissement définitif de votre compte et de votre adresse IP. Tentative suspecte ${attempts}/10. Au-delà de 10 tentatives, vous serez bloqué et seul un administrateur pourra lever la sanction.`
+        );
+        setTimeout(() => setWarningMessage(''), 8000);
       }
     );
 
@@ -141,8 +144,14 @@ export default function App() {
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (tab === 'dashboard') url.searchParams.delete('tab');
-    else url.searchParams.set('tab', tab);
+    if (url.pathname === '/admin') {
+      url.pathname = '/';
+    }
+    if (tab === 'dashboard') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', tab);
+    }
     window.history.replaceState({}, '', url.pathname + url.search + url.hash);
   }, [tab]);
 

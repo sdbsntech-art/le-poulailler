@@ -39,12 +39,12 @@ export function initSecurityListeners(onBlock, onWarning) {
 
   const triggerBlock = async (reason) => {
     attemptCount++;
-    console.warn(`[SECURITY ALERT] Suspicious activity: ${reason}. Attempt ${attemptCount}/3`);
+    console.warn(`[SECURITY ALERT] Suspicious activity: ${reason}. Attempt ${attemptCount}/10`);
     
     // Send event to server
     const data = await apiReportHacking(reason);
     
-    if (data.blocked || attemptCount >= 3) {
+    if (data.blocked || attemptCount >= 10) {
       localStorage.setItem('sys_lockdown', 'true');
       onBlock();
     } else {
