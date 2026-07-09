@@ -157,11 +157,11 @@ export default function ComptePanel({ lots }) {
             </div>
           ) : (
             <>
-              {!trial.expired && (
-                <p className="compte-hint compte-hint--trial">
-                  Vous êtes en mode essai. Les données restent sur cet appareil jusqu&apos;à la fin des 7 jours.
-                </p>
-              )}
+              <p className="compte-hint compte-hint--trial">
+                {trial.expired
+                  ? 'Période d\'essai terminée. Vos données restent sur cet appareil. Créez un compte pour les sauvegarder sur le cloud.'
+                  : 'Vous êtes en mode essai. Les données restent sur cet appareil ; un compte permet la sauvegarde cloud.'}
+              </p>
               <div className="compte-mode-toggle">
                 <button
                   type="button"
@@ -293,7 +293,7 @@ export default function ComptePanel({ lots }) {
 
           {!isAuthenticated && (
             <p className="compte-hint" style={{ marginTop: '1rem' }}>
-              Connectez-vous pour conserver ces rapports après la fin de l&apos;essai gratuit.
+              Connectez-vous pour sauvegarder ces rapports sur le cloud.
             </p>
           )}
         </div>

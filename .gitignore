@@ -7,4 +7,6 @@ mobile/.expo
 *.log
 .env
 .env.local
+firebase-service-account.json
+*-firebase-adminsdk-*.json
 server/data/

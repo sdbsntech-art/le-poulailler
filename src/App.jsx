@@ -23,8 +23,7 @@ import ImportantBanner from './components/ImportantBanner';
 import AppFooter from './components/AppFooter';
 import RappelBanner from './components/RappelBanner';
 import TrialBanner from './components/TrialBanner';
-import { apiTrackView, initSecurityListeners } from './utils/security';
-import LockdownView from './components/LockdownView';
+import { apiTrackView } from './utils/security';
 import AdminPanel from './components/AdminPanel';
 import './App.css';
 
@@ -39,7 +38,7 @@ const TABS = [
 ];
 
 export default function App() {
-  const { accessGranted, isAuthenticated, notificationPrefs, token, loading: authLoading } = useAuth();
+  const { isAuthenticated, notificationPrefs, token, loading: authLoading } = useAuth();
   const [tab, setTab] = useState(() => {
     if (window.location.pathname === '/admin') return 'admin';
     const t = new URLSearchParams(window.location.search).get('tab');
@@ -47,8 +46,6 @@ export default function App() {
     return TABS.some((x) => x.id === t) ? t : 'dashboard';
   });
   const now = useLiveClock(15000);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [warningMessage, setWarningMessage] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -67,33 +64,8 @@ export default function App() {
   const { completedIds, marquerFait, annulerFait, messageLog, ajouterMessageLog } = useAlertes();
 
   useEffect(() => {
-    // 1. Track page view and check initial block status
-    apiTrackView()
-      .then((data) => {
-        if (data && data.blocked) {
-          setIsBlocked(true);
-        }
-      })
-      .catch((err) => {
-        if (err.message?.includes('Accès suspendu') || err.status === 403) {
-          setIsBlocked(true);
-        }
-      });
+    apiTrackView().catch(() => {});
 
-    // 2. Initialize security listeners (F12, Right click, inspect keyboard shortcuts)
-    const cleanupSecurity = initSecurityListeners(
-      () => {
-        setIsBlocked(true);
-      },
-      (attempts) => {
-        setWarningMessage(
-          `Avertissement de sécurité : Les manipulations non autorisées (outils de développement, clic droit, etc.) sont strictement interdites. En poursuivant, vous risquez un bannissement définitif de votre compte et de votre adresse IP. Tentative suspecte ${attempts}/10. Au-delà de 10 tentatives, vous serez bloqué et seul un administrateur pourra lever la sanction.`
-        );
-        setTimeout(() => setWarningMessage(''), 8000);
-      }
-    );
-
-    // 3. Secret keyboard shortcut to open Admin Panel (Ctrl + Alt + A)
     const handleAdminShortcut = (e) => {
       if (e.ctrlKey && e.altKey && e.key?.toUpperCase() === 'A') {
         e.preventDefault();
@@ -103,7 +75,6 @@ export default function App() {
     window.addEventListener('keydown', handleAdminShortcut);
 
     return () => {
-      cleanupSecurity();
       window.removeEventListener('keydown', handleAdminShortcut);
     };
   }, []);
@@ -136,7 +107,7 @@ export default function App() {
   useRappelEngine(lots, profil, {
     completedIds,
     ajouterMessageLog,
-    enabled: profil.rappelsConfigures && accessGranted,
+    enabled: profil.rappelsConfigures,
     browserAlerts: isAuthenticated && notificationPrefs.browserAlerts,
     token,
     notificationPrefs,
@@ -174,10 +145,6 @@ export default function App() {
   const nbUrgentes = getAlertesUrgentes(alertesEnrichies).length;
   const lotsActifs = lots.filter((l) => getEffectifLot(l) > 0);
 
-  if (isBlocked) {
-    return <LockdownView />;
-  }
-
   if (authLoading) {
     return (
       <div className="app app--loading">
@@ -186,51 +153,8 @@ export default function App() {
     );
   }
 
-  if (!accessGranted) {
-    return (
-      <div className="app">
-        <header className="app-header app-header--compact">
-          <div className="app-header__brand">
-            <div className="app-header__logo" aria-hidden="true">
-              🐔
-            </div>
-            <div>
-              <h1>Le Poulailler</h1>
-            </div>
-          </div>
-        </header>
-        <TrialBanner onOpenCompte={() => setTab('compte')} />
-        <ComptePanel lots={[]} />
-        <AppFooter />
-      </div>
-    );
-  }
-
   return (
     <div className="app">
-      {warningMessage && (
-        <div
-          className="security-warning-toast"
-          style={{
-            position: 'fixed',
-            top: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 999999,
-            background: 'var(--danger)',
-            color: '#fff',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '8px',
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            boxShadow: '0 4px 15px rgba(196, 92, 92, 0.4)',
-            textAlign: 'center',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
-          }}
-        >
-          🚨 {warningMessage}
-        </div>
-      )}
       <PwaInstall />
       <TrialBanner onOpenCompte={() => setTab('compte')} />
       <RappelBanner

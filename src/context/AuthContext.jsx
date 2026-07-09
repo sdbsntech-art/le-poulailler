@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = !!token && !!user;
   const trial = useMemo(() => getTrialStatus(), [trialTick, isAuthenticated]);
 
-  const accessGranted = isAuthenticated || !trial.expired;
+  const accessGranted = true;
 
   useEffect(() => {
     const id = setInterval(() => setTrialTick((t) => t + 1), 60_000);
@@ -104,12 +104,6 @@ export function AuthProvider({ children }) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'GET_PUSH_TOKEN' }));
     }
   }, [token]);
-
-  useEffect(() => {
-    if (!isAuthenticated && trial.expired) {
-      clearTrialData();
-    }
-  }, [isAuthenticated, trial.expired]);
 
   const login = useCallback(async (email, password) => {
     const { token: t, user: u } = await apiLogin(email, password);

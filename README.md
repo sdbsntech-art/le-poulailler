@@ -1,4 +1,4 @@
-# Le Poulailler
+﻿# Le Poulailler
 
 Application SaaS de gestion d'élevage avicole (React + API + PWA).
 
@@ -8,7 +8,7 @@ Application SaaS de gestion d'élevage avicole (React + API + PWA).
 
 - **Essai gratuit 7 jours** sans compte (données locales sur l'appareil)
 - **Alerte** 2 jours avant la fin de l'essai
-- **Sans compte après 7 jours** : accès bloqué, données effacées
+- **Sans compte après 7 jours** : l'application reste utilisable (données locales) ; un compte permet la sauvegarde cloud et les rapports
 - **Avec compte** : sauvegarde cloud, rapports mensuels/annuels, notifications navigateur (+ e-mail bientôt)
 
 ### Lancer (web + API)

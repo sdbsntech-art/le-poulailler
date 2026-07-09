@@ -7,10 +7,10 @@ export default function TrialBanner({ onOpenCompte }) {
 
   if (trial.expired) {
     return (
-      <div className="trial-banner trial-banner--expired" role="alert">
+      <div className="trial-banner trial-banner--expired" role="status">
         <p>
-          <strong>Essai terminé.</strong> Créez un compte pour sauvegarder vos lots, recevoir vos rapports et vos
-          alertes par e-mail.
+          <strong>Période d&apos;essai terminée.</strong> L&apos;application reste utilisable. Créez un compte pour
+          sauvegarder vos lots sur le cloud, recevoir vos rapports et vos alertes par e-mail.
         </p>
         <button type="button" className="btn btn-primary btn-sm" onClick={onOpenCompte}>
           Créer un compte
@@ -21,13 +21,13 @@ export default function TrialBanner({ onOpenCompte }) {
 
   if (trial.showWarning) {
     return (
-      <div className="trial-banner trial-banner--warn" role="alert">
+      <div className="trial-banner trial-banner--warn" role="status">
         <p>
           <strong>Essai gratuit : {trial.daysLeft} jour{trial.daysLeft > 1 ? 's' : ''} restant{trial.daysLeft > 1 ? 's' : ''}</strong>
-          {' '}sur {trialDays}. Sans compte, vos enregistrements seront effacés à la fin de l&apos;essai.
+          {' '}sur {trialDays}. Un compte permet de sauvegarder vos données sur le cloud.
         </p>
         <button type="button" className="btn btn-primary btn-sm" onClick={onOpenCompte}>
-          Sécuriser mes données
+          Créer un compte
         </button>
       </div>
     );
