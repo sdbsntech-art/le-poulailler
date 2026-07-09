@@ -23,7 +23,7 @@ import ImportantBanner from './components/ImportantBanner';
 import AppFooter from './components/AppFooter';
 import RappelBanner from './components/RappelBanner';
 import TrialBanner from './components/TrialBanner';
-import { apiTrackView } from './utils/security';
+import { clearSecurityLockdown } from './utils/security';
 import AdminPanel from './components/AdminPanel';
 import './App.css';
 
@@ -64,7 +64,7 @@ export default function App() {
   const { completedIds, marquerFait, annulerFait, messageLog, ajouterMessageLog } = useAlertes();
 
   useEffect(() => {
-    apiTrackView().catch(() => {});
+    clearSecurityLockdown();
 
     const handleAdminShortcut = (e) => {
       if (e.ctrlKey && e.altKey && e.key?.toUpperCase() === 'A') {

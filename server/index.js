@@ -16,30 +16,22 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const ADMIN_KEY = process.env.ADMIN_KEY || 'admin-dev-key';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'zayelprotocole2026';
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
-
-// Failed login / hacking attempts map (hashedIp -> attempts count)
-const failedAttempts = new Map();
 
 function hashIP(ip) {
   return crypto.createHash('sha256').update(ip + 'zayelsalt2026').digest('hex');
 }
 
-// Security Middleware to block banned IPs
-function ipBlockMiddleware(req, res, next) {
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-  const hashedIp = hashIP(ip);
-  const store = getStore();
-  
-  if (store.admin?.blockedIPs?.includes(hashedIp)) {
-    return res.status(403).json({ blocked: true, error: 'Accès suspendu suite à des tentatives suspectes.' });
+async function verifyAdminPassword(password, store) {
+  if (password === ADMIN_KEY) return true;
+  if (store.admin?.passwordHash) {
+    return bcrypt.compare(password, store.admin.passwordHash);
   }
-  next();
+  return password === ADMIN_KEY || password === ADMIN_USERNAME;
 }
-
-app.use(ipBlockMiddleware);
 
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
@@ -335,16 +327,10 @@ app.get('/api/admin/users', (req, res) => {
 
 // --- NEW SECURITY AND ADMIN ENDPOINTS ---
 
-// Track visitors/views and verify block status
+// Track visitors/views (optional analytics, never blocks)
 app.post('/api/stats/track', (req, res) => {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
   const hashedIp = hashIP(ip);
-  const store = getStore();
-  
-  // If already blocked, return error
-  if (store.admin?.blockedIPs?.includes(hashedIp)) {
-    return res.status(403).json({ blocked: true, error: 'Accès suspendu.' });
-  }
 
   updateStore((s) => {
     if (!s.stats) {
@@ -357,71 +343,24 @@ app.post('/api/stats/track', (req, res) => {
     return s;
   });
 
-  res.json({ ok: true, blocked: false });
+  res.json({ ok: true });
 });
 
-// Report hacking / suspicious attempts
-app.post('/api/security/report-hacking', (req, res) => {
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-  const hashedIp = hashIP(ip);
-  const { reason = 'Activité suspecte' } = req.body;
-
-  let attempts = (failedAttempts.get(hashedIp) || 0) + 1;
-  failedAttempts.set(hashedIp, attempts);
-
-  console.warn(`[Alerte Sécurité] Tentative suspecte de l'IP ${ip} (${hashedIp}) : ${reason}. Tentative ${attempts}/10`);
-
-  if (attempts >= 10) {
-    updateStore((s) => {
-      if (!s.admin) s.admin = {};
-      if (!s.admin.blockedIPs) s.admin.blockedIPs = [];
-      if (!s.admin.blockedIPs.includes(hashedIp)) {
-        s.admin.blockedIPs.push(hashedIp);
-      }
-      return s;
-    });
-    return res.json({ blocked: true, attempts, message: 'Nombre maximal de tentatives dépassé. Accès bloqué.' });
-  }
-
-  res.json({ blocked: false, attempts, message: 'Activité enregistrée.' });
+// Legacy endpoint — no-op, never blocks
+app.post('/api/security/report-hacking', (_req, res) => {
+  res.json({ blocked: false, message: 'Security reporting disabled.' });
 });
 
 // Admin Login Route
 app.post('/api/admin/login', async (req, res) => {
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-  const hashedIp = hashIP(ip);
+  const { username, password } = req.body;
   const store = getStore();
 
-  if (store.admin?.blockedIPs?.includes(hashedIp)) {
-    return res.status(403).json({ blocked: true, error: 'Accès suspendu.' });
+  if (username !== ADMIN_USERNAME || !(await verifyAdminPassword(password, store))) {
+    return res.status(401).json({ error: 'Identifiants incorrects.' });
   }
 
-  const { username, password } = req.body;
-
-  if (username !== 'zayelprotocole2026' || !(await bcrypt.compare(password, store.admin?.passwordHash || ''))) {
-    let attempts = (failedAttempts.get(hashedIp) || 0) + 1;
-    failedAttempts.set(hashedIp, attempts);
-
-    if (attempts >= 3) {
-      updateStore((s) => {
-        if (!s.admin) s.admin = {};
-        if (!s.admin.blockedIPs) s.admin.blockedIPs = [];
-        if (!s.admin.blockedIPs.includes(hashedIp)) {
-          s.admin.blockedIPs.push(hashedIp);
-        }
-        return s;
-      });
-      return res.status(403).json({ blocked: true, error: 'Trop de tentatives infructueuses. Accès bloqué.' });
-    }
-
-    return res.status(401).json({ error: `Identifiants incorrects. Tentative ${attempts}/3.` });
-  }
-
-  // Clear attempts on success
-  failedAttempts.delete(hashedIp);
-
-  // Generate Admin Token
-  const token = jwt.sign({ role: 'admin', username: 'zayelprotocole2026' }, JWT_SECRET, { expiresIn: '4h' });
+  const token = jwt.sign({ role: 'admin', username: ADMIN_USERNAME }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token });
 });
 
@@ -441,34 +380,13 @@ app.get('/api/admin/stats', adminAuthMiddleware, (req, res) => {
       last_login_at: u.last_login_at || null
     };
   });
-  
-  const blockedIPs = store.admin?.blockedIPs || [];
 
   res.json({
     totalUsers,
     pageViews,
     uniqueVisitors,
     users,
-    blockedIPs
   });
-});
-
-// Admin Unblock IP route
-app.post('/api/admin/unblock', adminAuthMiddleware, (req, res) => {
-  const { hashedIp } = req.body;
-  if (!hashedIp) {
-    return res.status(400).json({ error: 'Adresse hachée requise.' });
-  }
-
-  updateStore((s) => {
-    if (s.admin?.blockedIPs) {
-      s.admin.blockedIPs = s.admin.blockedIPs.filter((ip) => ip !== hashedIp);
-    }
-    return s;
-  });
-
-  failedAttempts.delete(hashedIp);
-  res.json({ ok: true });
 });
 
 // Admin Change Password Route
@@ -511,12 +429,17 @@ async function initDbValues() {
   }
   
   if (!store.admin || !store.admin.passwordHash) {
-    const hash = await bcrypt.hash('zayelprotocole2026', 10);
+    const hash = await bcrypt.hash(ADMIN_KEY, 10);
     store.admin = {
-      username: 'zayelprotocole2026',
+      username: ADMIN_USERNAME,
       passwordHash: hash,
-      blockedIPs: store.admin?.blockedIPs || []
     };
+    needSave = true;
+  }
+
+  // Clear any legacy IP blocks from older security builds
+  if (store.admin?.blockedIPs?.length) {
+    delete store.admin.blockedIPs;
     needSave = true;
   }
 

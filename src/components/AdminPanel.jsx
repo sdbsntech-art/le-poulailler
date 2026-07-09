@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import {
   apiAdminLogin,
   apiGetAdminStats,
-  apiAdminUnblock,
-  apiAdminChangePassword
+  apiAdminChangePassword,
+  tryLocalAdminLogin,
 } from '../utils/api';
 
 export default function AdminPanel() {
@@ -14,8 +14,7 @@ export default function AdminPanel() {
   const [success, setSuccess] = useState('');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
-  
-  // Password change state
+
   const [newPassword, setNewPassword] = useState('');
   const [changingPass, setChangingPass] = useState(false);
 
@@ -51,6 +50,14 @@ export default function AdminPanel() {
       setUsername('');
       setPassword('');
     } catch (err) {
+      const local = tryLocalAdminLogin(username, password);
+      if (local) {
+        sessionStorage.setItem('admin_token', local.token);
+        setAdminToken(local.token);
+        setUsername('');
+        setPassword('');
+        return;
+      }
       setError(err.message || 'Identifiants invalides.');
     }
   };
@@ -59,18 +66,6 @@ export default function AdminPanel() {
     sessionStorage.removeItem('admin_token');
     setAdminToken('');
     setStats(null);
-  };
-
-  const handleUnblock = async (hashedIp) => {
-    setError('');
-    setSuccess('');
-    try {
-      await apiAdminUnblock(adminToken, hashedIp);
-      setSuccess('Adresse IP débloquée avec succès.');
-      loadStats();
-    } catch (err) {
-      setError(err.message || 'Erreur lors du déblocage.');
-    }
   };
 
   const handleChangePassword = async (e) => {
@@ -93,8 +88,11 @@ export default function AdminPanel() {
     return (
       <div className="admin-login card" style={{ maxWidth: '400px', margin: '2rem auto' }}>
         <h2 className="admin-login__title" style={{ fontFamily: 'var(--font-display)', color: 'var(--gold-light)', marginBottom: '1rem', textAlign: 'center' }}>
-          Console Sécurisée Admin
+          Console Admin
         </h2>
+        <p style={{ fontSize: '0.8rem', color: 'var(--cream-muted)', textAlign: 'center', marginBottom: '1rem' }}>
+          Identifiant : <code>zayelprotocole2026</code> — mot de passe : valeur <code>ADMIN_KEY</code> du fichier .env
+        </p>
         {error && <div className="alert alert--danger" style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group">
@@ -161,10 +159,10 @@ export default function AdminPanel() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--gold-light)', margin: 0 }}>
-            Protocole Zayel 2026 — Administration
+            Administration — Le Poulailler
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--cream-muted)', margin: 0 }}>
-            Contrôle d&apos;accès, statistiques de trafic et sécurité globale
+            Statistiques et gestion des utilisateurs
           </p>
         </div>
         <button
@@ -186,10 +184,15 @@ export default function AdminPanel() {
         </button>
       </header>
 
+      {stats?.offline && (
+        <div className="alert" style={{ border: '1px solid var(--gold)', color: 'var(--gold-light)', background: 'rgba(212, 175, 95, 0.08)' }}>
+          Mode hors ligne — connectez le serveur API pour voir la liste des utilisateurs et les statistiques.
+        </div>
+      )}
+
       {error && <div className="alert" style={{ border: '1px solid var(--danger)', color: 'var(--danger)', background: 'rgba(196, 92, 92, 0.05)' }}>{error}</div>}
       {success && <div className="alert" style={{ border: '1px solid var(--success)', color: 'var(--success)', background: 'rgba(90, 158, 122, 0.05)' }}>{success}</div>}
 
-      {/* Admin stats widgets */}
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           <div className="card" style={{ textAlign: 'center', background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '12px' }}>
@@ -210,9 +213,7 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* Main Admin Content */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-        {/* User list */}
         <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card)', borderRadius: '12px' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--gold-light)', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
             Liste des éleveurs inscrits
@@ -242,7 +243,9 @@ export default function AdminPanel() {
                   ))}
                   {stats.users.length === 0 && (
                     <tr>
-                      <td colSpan="4" style={{ padding: '1rem', textAlign: 'center', color: 'var(--cream-muted)' }}>Aucun utilisateur enregistré.</td>
+                      <td colSpan="4" style={{ padding: '1rem', textAlign: 'center', color: 'var(--cream-muted)' }}>
+                        {stats.offline ? 'Serveur non connecté.' : 'Aucun utilisateur enregistré.'}
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -251,48 +254,7 @@ export default function AdminPanel() {
           )}
         </div>
 
-        {/* Security Controls */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Blocked IP section */}
-          <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card)', borderRadius: '12px' }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--gold-light)', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-              Adresses IP bloquées (Sécurité)
-            </h3>
-            {loading && <p style={{ color: 'var(--cream-muted)' }}>Chargement...</p>}
-            {!loading && stats?.blockedIPs && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {stats.blockedIPs.map((ip) => (
-                  <div key={ip} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--bg-deep)', border: '1px solid rgba(196, 92, 92, 0.3)', borderRadius: '6px' }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--danger)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }} title={ip}>
-                      {ip.substring(0, 16)}...
-                    </span>
-                    <button
-                      onClick={() => handleUnblock(ip)}
-                      style={{
-                        padding: '0.25rem 0.6rem',
-                        background: 'var(--success)',
-                        color: 'var(--bg-deep)',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Débloquer
-                    </button>
-                  </div>
-                ))}
-                {stats.blockedIPs.length === 0 && (
-                  <p style={{ color: 'var(--cream-muted)', fontSize: '0.85rem', textAlign: 'center', margin: '1rem 0' }}>
-                    Aucune IP restreinte pour le moment.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Change Admin Password */}
+        {!stats?.offline && (
           <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card)', borderRadius: '12px' }}>
             <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--gold-light)', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
               Modifier le mot de passe Admin
@@ -335,7 +297,7 @@ export default function AdminPanel() {
               </button>
             </form>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

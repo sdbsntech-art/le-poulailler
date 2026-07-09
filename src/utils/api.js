@@ -1,5 +1,20 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+const ADMIN_USERNAME = 'zayelprotocole2026';
+const LOCAL_ADMIN_TOKEN = 'local-admin-session';
+
+export function isLocalAdminToken(token) {
+  return token === LOCAL_ADMIN_TOKEN;
+}
+
+export function tryLocalAdminLogin(username, password) {
+  const localKey = import.meta.env.VITE_ADMIN_KEY || import.meta.env.VITE_ADMIN_PASSWORD || ADMIN_USERNAME;
+  if (username === ADMIN_USERNAME && (password === localKey || password === ADMIN_USERNAME)) {
+    return { token: LOCAL_ADMIN_TOKEN, offline: true };
+  }
+  return null;
+}
+
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
@@ -52,28 +67,38 @@ export function apiSaveNotificationPrefs(token, prefs) {
   });
 }
 
-export function apiAdminLogin(username, password) {
-  return request('/admin/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  });
+export async function apiAdminLogin(username, password) {
+  try {
+    return await request('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  } catch (err) {
+    const local = tryLocalAdminLogin(username, password);
+    if (local) return local;
+    throw err;
+  }
 }
 
-export function apiGetAdminStats(token) {
+export async function apiGetAdminStats(token) {
+  if (isLocalAdminToken(token)) {
+    return {
+      offline: true,
+      totalUsers: 0,
+      pageViews: 0,
+      uniqueVisitors: 0,
+      users: [],
+    };
+  }
   return request('/admin/stats', {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
-export function apiAdminUnblock(token, hashedIp) {
-  return request('/admin/unblock', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ hashedIp }),
-  });
-}
-
 export function apiAdminChangePassword(token, newPassword) {
+  if (isLocalAdminToken(token)) {
+    return Promise.reject(new Error('Modification du mot de passe indisponible en mode hors ligne.'));
+  }
   return request('/admin/change-password', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
