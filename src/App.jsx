@@ -25,10 +25,12 @@ import RappelBanner from './components/RappelBanner';
 import TrialBanner from './components/TrialBanner';
 import { clearSecurityLockdown } from './utils/security';
 import AdminPanel from './components/AdminPanel';
+import EconomiePanel from './components/EconomiePanel';
 import './App.css';
 
 const TABS = [
   { id: 'dashboard', label: 'Tableau de bord' },
+  { id: 'economie', label: 'Économie' },
   { id: 'conseils', label: 'Conseils' },
   { id: 'alertes', label: 'Alertes' },
   { id: 'alimentation', label: 'Alimentation' },
@@ -59,7 +61,7 @@ export default function App() {
     };
   }, [menuOpen]);
 
-  const { lots, ajouterLot, supprimerLot, enregistrerDeces, enregistrerVente, hydrated } = usePoulailler();
+  const { lots, ajouterLot, supprimerLot, enregistrerDeces, enregistrerVente, modifierLot, hydrated } = usePoulailler();
   const { profil, enregistrerProfil } = useProfil();
   const { completedIds, marquerFait, annulerFait, messageLog, ajouterMessageLog } = useAlertes();
 
@@ -235,7 +237,8 @@ export default function App() {
             <nav className="mobile-menu__nav">
               {TABS.map((t) => {
                 let icon = '📊';
-                if (t.id === 'conseils') icon = '💡';
+                if (t.id === 'economie') icon = '💰';
+                else if (t.id === 'conseils') icon = '💡';
                 else if (t.id === 'alertes') icon = '🔔';
                 else if (t.id === 'alimentation') icon = '🌾';
                 else if (t.id === 'sante') icon = '🏥';
@@ -349,6 +352,7 @@ export default function App() {
             </>
           )}
 
+          {tab === 'economie' && <EconomiePanel lots={lots} modifierLot={modifierLot} />}
           {tab === 'conseils' && <ConseilsView />}
           {tab === 'alertes' && (
             <AlertesPanel

@@ -248,7 +248,13 @@ export default function ComptePanel({ lots }) {
               </div>
               <div className="rapport-stat">
                 <strong>{rapportMensuel.nombreVentes}</strong>
-                <span>Opérations vente</span>
+                <span>Ventes</span>
+              </div>
+              <div className="rapport-stat">
+                <strong style={{ color: 'var(--success)' }}>
+                  {rapportMensuel.chiffreAffaires.toLocaleString('fr-FR')} F
+                </strong>
+                <span>Revenus</span>
               </div>
               <div className="rapport-stat">
                 <strong>{rapportMensuel.lotsEnregistres}</strong>
@@ -268,6 +274,12 @@ export default function ComptePanel({ lots }) {
                 <strong>{rapportAnnuel.poussinsDecedes}</strong>
                 <span>Total décédés</span>
               </div>
+              <div className="rapport-stat">
+                <strong style={{ color: 'var(--success)' }}>
+                  {rapportAnnuel.chiffreAffaires.toLocaleString('fr-FR')} F
+                </strong>
+                <span>Total revenus</span>
+              </div>
             </div>
             <div className="rapport-mois-table-wrap">
               <table className="rapport-mois-table">
@@ -276,6 +288,7 @@ export default function ComptePanel({ lots }) {
                     <th>Mois</th>
                     <th>Vendus</th>
                     <th>Décédés</th>
+                    <th>Revenus</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -284,6 +297,9 @@ export default function ComptePanel({ lots }) {
                       <td>{m.mois}</td>
                       <td>{m.vendus}</td>
                       <td>{m.decedes}</td>
+                      <td style={{ color: 'var(--success)', fontWeight: 'bold' }}>
+                        {m.chiffreAffaires > 0 ? `${m.chiffreAffaires.toLocaleString('fr-FR')} FCFA` : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

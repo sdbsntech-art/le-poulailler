@@ -2400,3 +2400,73 @@ body.menu-open {
   }
 }
 
+/* --- Gestion Financière & Économie --- */
+.economie-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.economie-editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 868px) {
+  .economie-editor-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.economie-form fieldset {
+  background: rgba(255, 255, 255, 0.01);
+  transition: border-color 0.2s;
+}
+
+.economie-form fieldset:focus-within {
+  border-color: var(--gold-light) !important;
+}
+
+.economie-live-preview {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.live-preview-content {
+  font-family: var(--font-body);
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.economie-table th,
+.economie-table td {
+  border-bottom: 1px solid var(--border);
+}
+
+.economie-table th {
+  font-family: var(--font-body);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--cream-muted);
+}
+
+.table-row-hover {
+  transition: background-color 0.15s ease;
+}
+
+.table-row-hover:hover {
+  background-color: rgba(212, 175, 95, 0.03);
+}
+
+.form-group label input[type="radio"] {
+  accent-color: var(--gold);
+}
+

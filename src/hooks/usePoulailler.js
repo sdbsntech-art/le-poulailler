@@ -116,13 +116,16 @@ export function usePoulailler() {
   );
 
   const enregistrerVente = useCallback(
-    guard((lotId, { date, quantite, note = '' }) => {
+    guard((lotId, { date, quantite, prixUnitaire = 0, note = '' }) => {
       setLots((prev) =>
         prev.map((l) =>
           l.id === lotId
             ? {
                 ...l,
-                ventes: [...(l.ventes || []), { id: generateId(), date, quantite: Number(quantite), note }],
+                ventes: [
+                  ...(l.ventes || []),
+                  { id: generateId(), date, quantite: Number(quantite), prixUnitaire: Number(prixUnitaire), note },
+                ],
               }
             : l
         )

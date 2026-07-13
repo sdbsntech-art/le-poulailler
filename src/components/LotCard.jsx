@@ -24,6 +24,8 @@ export default function LotCard({ lot, onDeces, onVente, onDelete }) {
   const [formDate, setFormDate] = useState(new Date().toISOString().slice(0, 10));
   const [formQty, setFormQty] = useState('');
   const [formNote, setFormNote] = useState('');
+  const [sellPriceMode, setSellPriceMode] = useState('unit');
+  const [formPriceVal, setFormPriceVal] = useState('');
 
   const age = getAgeJours(lot.dateAchat);
   const phase = getPhaseInfo(age);
@@ -38,13 +40,20 @@ export default function LotCard({ lot, onDeces, onVente, onDelete }) {
     setFormDate(new Date().toISOString().slice(0, 10));
     setFormQty('');
     setFormNote('');
+    setFormPriceVal('');
+    setSellPriceMode('unit');
     setModal(type);
   }
 
   function submitModal() {
     const q = parseInt(formQty, 10);
     if (!q || q < 1 || q > effectif) return;
-    const payload = { date: formDate, quantite: q, note: formNote };
+    let pu = 0;
+    if (modal === 'vente') {
+      const priceVal = Number(formPriceVal) || 0;
+      pu = sellPriceMode === 'unit' ? priceVal : (q > 0 ? priceVal / q : 0);
+    }
+    const payload = { date: formDate, quantite: q, prixUnitaire: pu, note: formNote };
     if (modal === 'deces') onDeces(lot.id, payload);
     if (modal === 'vente') onVente(lot.id, payload);
     setModal(null);
@@ -187,11 +196,15 @@ export default function LotCard({ lot, onDeces, onVente, onDelete }) {
             <>
               <h4 style={{ marginTop: '1rem', fontSize: '0.9rem' }}>Historique</h4>
               <ul className="history-list">
-                {(lot.ventes || []).map((v) => (
-                  <li key={v.id}>
-                    Vente : {v.quantite} le {v.date} {v.note && `— ${v.note}`}
-                  </li>
-                ))}
+                {(lot.ventes || []).map((v) => {
+                  const pu = v.prixUnitaire || 0;
+                  const total = pu * v.quantite;
+                  return (
+                    <li key={v.id}>
+                      Vente : {v.quantite} poulets {pu > 0 ? `à ${pu.toLocaleString()} FCFA (Total: ${total.toLocaleString()} FCFA)` : ''} le {v.date} {v.note && `— ${v.note}`}
+                    </li>
+                  );
+                })}
                 {(lot.deces || []).map((d) => (
                   <li key={d.id}>
                     Décès : {d.quantite} le {d.date} {d.note && `— ${d.note}`}
@@ -227,6 +240,55 @@ export default function LotCard({ lot, onDeces, onVente, onDelete }) {
               onChange={(e) => setFormQty(e.target.value)}
             />
           </div>
+          {modal === 'vente' && (
+            <>
+              <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem' }}>Mode de saisie du prix</label>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="sellPriceMode"
+                      value="unit"
+                      checked={sellPriceMode === 'unit'}
+                      onChange={() => setSellPriceMode('unit')}
+                    />
+                    Par poulet (Prix unitaire)
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="sellPriceMode"
+                      value="total"
+                      checked={sellPriceMode === 'total'}
+                      onChange={() => setSellPriceMode('total')}
+                    />
+                    Montant total de la vente
+                  </label>
+                </div>
+              </div>
+              <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                <label>
+                  {sellPriceMode === 'unit' ? 'Prix de vente unitaire (FCFA)' : 'Montant total de la vente (FCFA)'}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder={sellPriceMode === 'unit' ? 'Ex: 3000' : 'Ex: 150000'}
+                  value={formPriceVal}
+                  onChange={(e) => setFormPriceVal(e.target.value)}
+                  required
+                />
+                {formQty && formPriceVal && (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--gold-light)', marginTop: '0.25rem' }}>
+                    {sellPriceMode === 'unit'
+                      ? `Montant total calculé : ${(Number(formQty) * Number(formPriceVal)).toLocaleString()} FCFA`
+                      : `Prix unitaire calculé : ${Math.round(Number(formPriceVal) / Number(formQty)).toLocaleString()} FCFA / poulet`}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
           <div className="form-group">
             <label>Note (optionnel)</label>
             <input type="text" value={formNote} onChange={(e) => setFormNote(e.target.value)} />

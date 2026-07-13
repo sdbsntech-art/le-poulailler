@@ -7,6 +7,8 @@ export default function QuickRecord({ lots, onDeces, onVente }) {
   const [type, setType] = useState('deces');
   const [quantite, setQuantite] = useState('');
   const [note, setNote] = useState('');
+  const [sellPriceMode, setSellPriceMode] = useState('unit');
+  const [priceVal, setPriceVal] = useState('');
   const [message, setMessage] = useState('');
 
   const lot = actifs.find((l) => l.id === lotId);
@@ -19,15 +21,22 @@ export default function QuickRecord({ lots, onDeces, onVente }) {
       setMessage('Quantité invalide ou lot non sélectionné.');
       return;
     }
+    let pu = 0;
+    if (type === 'vente') {
+      const pVal = Number(priceVal) || 0;
+      pu = sellPriceMode === 'unit' ? pVal : (q > 0 ? pVal / q : 0);
+    }
     const payload = {
       date: new Date().toISOString().slice(0, 10),
       quantite: q,
+      prixUnitaire: pu,
       note,
     };
     if (type === 'deces') onDeces(lotId, payload);
     else onVente(lotId, payload);
     setQuantite('');
     setNote('');
+    setPriceVal('');
     setMessage(
       type === 'deces'
         ? `${q} décès enregistré(s). Total vivants mis à jour.`
@@ -47,7 +56,7 @@ export default function QuickRecord({ lots, onDeces, onVente }) {
         Déclarez décès ou ventes — le total vivant se recalcule immédiatement.
       </p>
       <form onSubmit={handleSubmit}>
-        <div className="form-grid">
+        <div className="form-grid" style={{ gridTemplateColumns: type === 'vente' ? 'repeat(auto-fit, minmax(140px, 1fr))' : undefined }}>
           <div className="form-group">
             <label>Lot</label>
             <select value={lotId} onChange={(e) => setLotId(e.target.value)}>
@@ -60,7 +69,13 @@ export default function QuickRecord({ lots, onDeces, onVente }) {
           </div>
           <div className="form-group">
             <label>Type</label>
-            <select value={type} onChange={(e) => setType(e.target.value)}>
+            <select
+              value={type}
+              onChange={(e) => {
+                setType(e.target.value);
+                setPriceVal('');
+              }}
+            >
               <option value="deces">Poulets décédés</option>
               <option value="vente">Poulets vendus</option>
             </select>
@@ -76,6 +91,28 @@ export default function QuickRecord({ lots, onDeces, onVente }) {
               required
             />
           </div>
+          {type === 'vente' && (
+            <>
+              <div className="form-group">
+                <label>Mode prix</label>
+                <select value={sellPriceMode} onChange={(e) => setSellPriceMode(e.target.value)}>
+                  <option value="unit">Prix unitaire</option>
+                  <option value="total">Montant total</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{sellPriceMode === 'unit' ? 'Prix unitaire (FCFA)' : 'Montant total (FCFA)'}</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder={sellPriceMode === 'unit' ? 'Ex: 3000' : 'Ex: 150000'}
+                  value={priceVal}
+                  onChange={(e) => setPriceVal(e.target.value)}
+                  required
+                />
+              </div>
+            </>
+          )}
           <div className="form-group">
             <label>Note</label>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optionnel" />
@@ -87,7 +124,14 @@ export default function QuickRecord({ lots, onDeces, onVente }) {
           </div>
         </div>
       </form>
-      {message && <p className="quick-record__msg">{message}</p>}
+      {type === 'vente' && quantite && priceVal && (
+        <p style={{ fontSize: '0.75rem', color: 'var(--gold-light)', marginTop: '0.5rem' }}>
+          {sellPriceMode === 'unit'
+            ? `Montant total calculé : ${(Number(quantite) * Number(priceVal)).toLocaleString()} FCFA`
+            : `Prix unitaire calculé : ${Math.round(Number(priceVal) / Number(quantite)).toLocaleString()} FCFA / poulet`}
+        </p>
+      )}
+      {message && <p className="quick-record__msg" style={{ marginTop: '0.75rem' }}>{message}</p>}
     </div>
   );
 }

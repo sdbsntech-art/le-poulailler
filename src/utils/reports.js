@@ -14,7 +14,7 @@ function aggregateVentesDeces(lots) {
 
   for (const lot of lots) {
     for (const v of lot.ventes || []) {
-      ventes.push({ date: v.date, quantite: v.quantite || 0, lotId: lot.id, libelle: lot.libelle });
+      ventes.push({ date: v.date, quantite: v.quantite || 0, prixUnitaire: v.prixUnitaire || 0, lotId: lot.id, libelle: lot.libelle });
     }
     for (const d of lot.deces || []) {
       deces.push({ date: d.date, quantite: d.quantite || 0, lotId: lot.id, libelle: lot.libelle });
@@ -36,6 +36,7 @@ export function computeRapportMensuel(lots, year, month) {
 
   const poussinsVendus = ventesMois.reduce((s, v) => s + v.quantite, 0);
   const poussinsDecedes = decesMois.reduce((s, d) => s + d.quantite, 0);
+  const chiffreAffaires = ventesMois.reduce((s, v) => s + (v.quantite * v.prixUnitaire), 0);
   const lotsActifs = lots.filter((l) => l.quantiteInitiale > 0).length;
 
   return {
@@ -44,6 +45,7 @@ export function computeRapportMensuel(lots, year, month) {
     month,
     poussinsVendus,
     poussinsDecedes,
+    chiffreAffaires,
     nombreVentes: ventesMois.length,
     nombreDeces: decesMois.length,
     lotsEnregistres: lots.length,
@@ -66,6 +68,7 @@ export function computeRapportAnnuel(lots, year) {
       month,
       vendus: v.reduce((s, x) => s + x.quantite, 0),
       decedes: d.reduce((s, x) => s + x.quantite, 0),
+      chiffreAffaires: v.reduce((s, x) => s + (x.quantite * x.prixUnitaire), 0),
     };
   });
 
@@ -74,6 +77,7 @@ export function computeRapportAnnuel(lots, year) {
     year,
     poussinsVendus: ventesAnnee.reduce((s, v) => s + v.quantite, 0),
     poussinsDecedes: decesAnnee.reduce((s, d) => s + d.quantite, 0),
+    chiffreAffaires: ventesAnnee.reduce((s, v) => s + (v.quantite * v.prixUnitaire), 0),
     nombreVentes: ventesAnnee.length,
     lotsEnregistres: lots.length,
     parMois,
